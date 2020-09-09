@@ -16,18 +16,22 @@
 
 package controllers
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.Inject
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
-import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import uk.gov.hmrc.play.bootstrap.controller.BackendController
 import config.AppConfig
+import models.{ArrivalId, DepartureId}
 
 import scala.concurrent.Future
 
-@Singleton()
 class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponents)
     extends BackendController(cc) {
 
-  def post(): Action[AnyContent] = Action.async { implicit request =>
+  def submitArrival(arrivalId: ArrivalId): Action[AnyContent] = Action.async { implicit request =>
       Future.successful(Accepted ("Message accepted") )
+  }
+
+  def submitDeparture(departureId: DepartureId): Action[AnyContent] = Action.async { implicit request =>
+    Future.successful(Accepted ("Message accepted") )
   }
 }

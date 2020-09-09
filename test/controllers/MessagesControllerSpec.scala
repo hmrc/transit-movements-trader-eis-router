@@ -24,6 +24,7 @@ import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import config.AppConfig
+import models.{ArrivalId, DepartureId}
 
 class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppPerSuite {
 
@@ -72,11 +73,17 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppP
 
   private val controller = new MessagesController(appConfig, Helpers.stubControllerComponents())
 
-  "POST any XML" should {
+  "POST any XML to /movements/arrivals/:arrivalId/messages" should {
     "should return 202 Accepted" in {
-      val result = controller.post()(fakeRequest)
+      val result = controller.submitArrival(ArrivalId(1))(fakeRequest)
       status(result) shouldBe ACCEPTED
     }
   }
 
+  "POST any XML to /movements/departures/:departureId/messages" should {
+    "should return 202 Accepted" in {
+      val result = controller.submitDeparture(DepartureId(1))(fakeRequest)
+      status(result) shouldBe ACCEPTED
+    }
+  }
 }
