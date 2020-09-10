@@ -16,15 +16,20 @@
 
 package controllers
 
+import akka.actor.ActorSystem
+import akka.stream.{ActorMaterializer, Materializer}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.{Configuration, Environment}
 import play.api.test.Helpers._
-import play.api.test.{FakeRequest, Helpers}
+import play.api.test.{FakeHeaders, FakeRequest, Helpers}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import config.AppConfig
-import models.{ArrivalId, DepartureId}
+import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
+import play.api.http.{HeaderNames, MimeTypes}
+import play.api.libs.json.Json
+import play.api.mvc.AnyContentAsXml
 
 class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppPerSuite {
 
@@ -62,8 +67,28 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppP
     </CUSOFFPREOFFRES>
   </CC007A>
 
-  private val fakeRequest = FakeRequest("POST", "/messages").withXmlBody(requestXmlBody)
-  private val fakeEmptyRequest = FakeRequest("POST", "/messages")
+  private val fakeValidXmlRequest = FakeRequest(
+    method = "POST",
+    uri = routes.MessagesController.post().url,
+    headers = FakeHeaders(Seq(HeaderNames.CONTENT_TYPE -> MimeTypes.XML)),
+    body = requestXmlBody)
+
+  private val fakeEmptyRequest = FakeRequest(
+    method = "POST",
+    uri = routes.MessagesController.post().url,
+    headers = FakeHeaders(),
+    body = AnyContentAsXml)
+
+  private val fakeJsonRequest = FakeRequest(
+    method = "POST",
+    uri = routes.MessagesController.post().url,
+    headers = FakeHeaders(Seq(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)),
+    body = Json.parse(""" {"key": "value"} """)
+  )
+
+  implicit val system: ActorSystem = ActorSystem("MessagesControllerSpec")
+
+  implicit def mat: Materializer = ActorMaterializer()
 
   private val env           = Environment.simple()
   private val configuration = Configuration.load(env)
@@ -73,17 +98,26 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppP
 
   private val controller = new MessagesController(appConfig, Helpers.stubControllerComponents())
 
-  "POST any XML to /movements/arrivals/:arrivalId/messages" should {
+  "POST any XML" should {
     "should return 202 Accepted" in {
-      val result = controller.submitArrival(ArrivalId(1))(fakeRequest)
+      val result = controller.post()(fakeValidXmlRequest)
       status(result) shouldBe ACCEPTED
     }
   }
 
-  "POST any XML to /movements/departures/:departureId/messages" should {
-    "should return 202 Accepted" in {
-      val result = controller.submitDeparture(DepartureId(1))(fakeRequest)
-      status(result) shouldBe ACCEPTED
+  "POST any JSON" should {
+    "should return 415 UnsupportedMediaType" in {
+      val result = controller.post()(fakeJsonRequest)
+
+      status(result) mustEqual UNSUPPORTED_MEDIA_TYPE
+    }
+  }
+
+  "POST empty request" should {
+    "should return 415 UnsupportedMediaType" in {
+      val result = controller.post()(fakeEmptyRequest)
+
+      status(result) mustEqual UNSUPPORTED_MEDIA_TYPE
     }
   }
 }

@@ -16,22 +16,19 @@
 
 package controllers
 
-import javax.inject.Inject
-import play.api.mvc.{Action, AnyContent, ControllerComponents}
-import uk.gov.hmrc.play.bootstrap.controller.BackendController
+import javax.inject.{Inject, Singleton}
+import play.api.mvc.{Action, AnyContent, ControllerComponents, Request}
+import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import config.AppConfig
-import models.{ArrivalId, DepartureId}
 
 import scala.concurrent.Future
+import scala.xml.NodeSeq
 
+@Singleton()
 class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponents)
-    extends BackendController(cc) {
+  extends BackendController(cc) {
 
-  def submitArrival(arrivalId: ArrivalId): Action[AnyContent] = Action.async { implicit request =>
-      Future.successful(Accepted ("Message accepted") )
-  }
-
-  def submitDeparture(departureId: DepartureId): Action[AnyContent] = Action.async { implicit request =>
+  def post(): Action[NodeSeq] = Action.async(parse.xml) { implicit request: Request[NodeSeq] =>
     Future.successful(Accepted ("Message accepted") )
   }
 }

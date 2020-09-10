@@ -1,4 +1,3 @@
 # microservice specific routes
 
-POST         /movements/arrivals/:arrivalId/messages                 controllers.MessagesController.submitArrival(arrivalId: models.ArrivalId)
-POST         /movements/departures/:departureId/messages             controllers.MessagesController.submitDeparture(departureId: models.DepartureId)
+POST        /movements/messages             controllers.MessagesController.post
