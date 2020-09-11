@@ -27,4 +27,8 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
 
   val auditingEnabled: Boolean = config.get[Boolean]("auditing.enabled")
   val graphiteHost: String     = config.get[String]("microservice.metrics.graphite.host")
+
+  private val eisBaseUrl: String = servicesConfig.baseUrl("eis")
+  val eisUrl: String             = eisBaseUrl ++ config.get[String]("microservice.services.eis.uri")
+  val eisBearerToken: String     = config.get[String]("microservice.services.eis.headers.bearerToken")
 }
