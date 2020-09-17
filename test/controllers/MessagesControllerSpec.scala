@@ -26,12 +26,14 @@ import play.api.test.Helpers._
 import play.api.test.{FakeHeaders, FakeRequest, Helpers}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import config.AppConfig
+import connectors.MessageConnector
 import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
+import org.scalatestplus.mockito.MockitoSugar
 import play.api.http.{HeaderNames, MimeTypes}
 import play.api.libs.json.Json
 import play.api.mvc.AnyContentAsXml
 
-class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppPerSuite {
+class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppPerSuite with MockitoSugar {
 
   val requestXmlBody = <CC007A>
     <SynIdeMES1>UNOC</SynIdeMES1>
@@ -96,7 +98,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppP
   private val serviceConfig = new ServicesConfig(configuration)
   private val appConfig     = new AppConfig(configuration, serviceConfig)
 
-  private val controller = new MessagesController(appConfig, Helpers.stubControllerComponents())
+  private val controller = new MessagesController(appConfig, Helpers.stubControllerComponents(), mock[MessageConnector])
 
   "POST any XML" should {
     "should return 202 Accepted" in {
