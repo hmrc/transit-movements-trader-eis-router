@@ -11,7 +11,6 @@ import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
 import org.scalatestplus.mockito.MockitoSugar
 
 import scala.concurrent.duration.Duration
-//import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 
@@ -81,6 +80,25 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         post(
           urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
         ).willReturn(aResponse().withStatus(UNAUTHORIZED))
+      )
+
+      implicit val hc = HeaderCarrier()
+      implicit val requestHeader = FakeRequest()
+
+      val result = connector.post("<document></document>")
+
+      whenReady(result, Timeout(Duration.Inf)) { r =>
+        r.status mustEqual INTERNAL_SERVER_ERROR
+      }
+    }
+
+    "return INTERNAL_SERVER_ERROR when post returns BAD_GATEWAY" in {
+      val connector = app.injector.instanceOf[MessageConnector]
+
+      server.stubFor(
+        post(
+          urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+        ).willReturn(aResponse().withStatus(BAD_GATEWAY))
       )
 
       implicit val hc = HeaderCarrier()
