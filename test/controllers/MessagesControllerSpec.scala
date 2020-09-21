@@ -19,19 +19,26 @@ package controllers
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, Materializer}
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.{Configuration, Environment}
 import play.api.test.Helpers._
 import play.api.test.{FakeHeaders, FakeRequest, Helpers}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import config.AppConfig
+import connectors.MessageConnector
 import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
+import org.scalatestplus.mockito.MockitoSugar
 import play.api.http.{HeaderNames, MimeTypes}
 import play.api.libs.json.Json
 import play.api.mvc.AnyContentAsXml
+import org.mockito.Mockito.{reset, when}
+import org.mockito.ArgumentMatchers.any
+import org.scalatest.wordspec.AnyWordSpec
+import uk.gov.hmrc.http.HttpResponse
 
-class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppPerSuite {
+import scala.concurrent.Future
+
+class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppPerSuite with MockitoSugar {
 
   val requestXmlBody = <CC007A>
     <SynIdeMES1>UNOC</SynIdeMES1>
@@ -96,18 +103,28 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppP
   private val serviceConfig = new ServicesConfig(configuration)
   private val appConfig     = new AppConfig(configuration, serviceConfig)
 
-  private val controller = new MessagesController(appConfig, Helpers.stubControllerComponents())
+  private def controller(messageConnector: MessageConnector = mock[MessageConnector]) = new MessagesController(appConfig, Helpers.stubControllerComponents(), messageConnector)
 
   "POST any XML" should {
-    "should return 202 Accepted" in {
-      val result = controller.post()(fakeValidXmlRequest)
+    "should return 202 Accepted when message connector successful" in {
+      val mc = mock[MessageConnector]
+      when(mc.post(any())(any())).thenReturn(Future.successful(HttpResponse(ACCEPTED, "")))
+
+      val result = controller(mc).post()(fakeValidXmlRequest)
       status(result) shouldBe ACCEPTED
+    }
+    "should return 500 Internal Server Error when message connector receives 500" in {
+      val mc = mock[MessageConnector]
+      when(mc.post(any())(any())).thenReturn(Future.successful(HttpResponse(INTERNAL_SERVER_ERROR, "")))
+
+      val result = controller(mc).post()(fakeValidXmlRequest)
+      status(result) shouldBe INTERNAL_SERVER_ERROR
     }
   }
 
   "POST any JSON" should {
     "should return 415 UnsupportedMediaType" in {
-      val result = controller.post()(fakeJsonRequest)
+      val result = controller().post()(fakeJsonRequest)
 
       status(result) mustEqual UNSUPPORTED_MEDIA_TYPE
     }
@@ -115,7 +132,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppP
 
   "POST empty request" should {
     "should return 415 UnsupportedMediaType" in {
-      val result = controller.post()(fakeEmptyRequest)
+      val result = controller().post()(fakeEmptyRequest)
 
       status(result) mustEqual UNSUPPORTED_MEDIA_TYPE
     }

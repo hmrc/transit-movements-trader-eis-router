@@ -18,6 +18,8 @@ package connectors
 
 import com.google.inject.Inject
 import config.AppConfig
+import connectors.util.CustomHttpReader
+import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpResponse
 import uk.gov.hmrc.http.logging.Authorization
@@ -29,11 +31,12 @@ import scala.concurrent.{ExecutionContext, Future}
 class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit ec: ExecutionContext) {
 
   def post(xml: String)(implicit headerCarrier: HeaderCarrier): Future[HttpResponse] = {
+    Logger.debug(s"About to send message:\n$xml")
     val url = config.eisUrl
 
     val newHeaders = headerCarrier
       .copy(authorization = Some(Authorization(s"Bearer ${config.eisBearerToken}")))
 
-    http.POSTString[HttpResponse](url, xml)(readRaw, hc = newHeaders, implicitly)
+    http.POSTString[HttpResponse](url, xml)(CustomHttpReader, hc = newHeaders, implicitly)
   }
 }

@@ -20,15 +20,19 @@ import javax.inject.{Inject, Singleton}
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Request}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import config.AppConfig
+import connectors.MessageConnector
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.xml.NodeSeq
 
 @Singleton()
-class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponents)
+class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponents, connector: MessageConnector)
   extends BackendController(cc) {
 
   def post(): Action[NodeSeq] = Action.async(parse.xml) { implicit request: Request[NodeSeq] =>
-    Future.successful(Accepted ("Message accepted") )
+    connector.post(request.body.toString()).map(response => response.status match {
+      case ACCEPTED => Accepted ("Message accepted")
+      case _ => Status(response.status) })
   }
 }
