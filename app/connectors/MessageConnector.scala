@@ -33,6 +33,6 @@ class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit e
     Logger.debug(s"About to send message:\n$xml")
     val url = config.eisUrl
 
-    http.POSTString[HttpResponse](url, xml, retainOnlyCustomUpstreamHeaders())(CustomHttpReader, headerCarrier, implicitly)
+    http.POSTString[HttpResponse](url, xml, retainOnlyCustomUpstreamHeaders())(CustomHttpReader, enforceAuthHeaderCarrier(), implicitly)
   }
 }
