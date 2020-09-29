@@ -108,14 +108,14 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppP
   "POST any XML" should {
     "should return 202 Accepted when message connector successful" in {
       val mc = mock[MessageConnector]
-      when(mc.post(any())(any())).thenReturn(Future.successful(HttpResponse(ACCEPTED, "")))
+      when(mc.post(any())(any(), any())).thenReturn(Future.successful(HttpResponse(ACCEPTED, "")))
 
       val result = controller(mc).post()(fakeValidXmlRequest)
       status(result) shouldBe ACCEPTED
     }
     "should return 500 Internal Server Error when message connector receives 500" in {
       val mc = mock[MessageConnector]
-      when(mc.post(any())(any())).thenReturn(Future.successful(HttpResponse(INTERNAL_SERVER_ERROR, "")))
+      when(mc.post(any())(any(), any())).thenReturn(Future.successful(HttpResponse(INTERNAL_SERVER_ERROR, "")))
 
       val result = controller(mc).post()(fakeValidXmlRequest)
       status(result) shouldBe INTERNAL_SERVER_ERROR
