@@ -27,12 +27,16 @@ import uk.gov.hmrc.http.HttpClient
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit ec: ExecutionContext) extends BaseConnector {
+class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit ec: ExecutionContext) {
 
   def post(xml: String)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Future[HttpResponse] = {
     Logger.debug(s"About to send message:\n$xml")
     val url = config.eisUrl
 
-    http.POSTString[HttpResponse](url, xml, retainOnlyCustomUpstreamHeaders())(CustomHttpReader, enforceAuthHeaderCarrier(), implicitly)
+    http.POSTString[HttpResponse](
+      url,
+      xml,
+      OutgoingRequestFilter.retainOnlyCustomUpstreamHeaders()
+    )(CustomHttpReader, OutgoingRequestFilter.enforceAuthHeaderCarrier(), implicitly)
   }
 }

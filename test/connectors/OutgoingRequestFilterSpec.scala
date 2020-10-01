@@ -23,26 +23,13 @@ import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.http.HeaderNames
-import play.api.mvc.RequestHeader
 import play.api.test.FakeRequest
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.logging.Authorization
 
-class BaseConnectorSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSuite with OptionValues with ScalaFutures with MockitoSugar with BeforeAndAfterEach {
-  class Harness extends BaseConnector {
-    override def retainOnlyCustomUpstreamHeaders()(implicit requestHeader: RequestHeader): Seq[(String, String)] = {
-      super.retainOnlyCustomUpstreamHeaders()
-    }
-
-    override def enforceAuthHeaderCarrier()(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): HeaderCarrier = {
-      super.enforceAuthHeaderCarrier()
-    }
-  }
-
-  "BaseConnector" - {
+class OutgoingRequestFilterSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSuite with OptionValues with ScalaFutures with MockitoSugar with BeforeAndAfterEach {
+  "OutgoingRequestFilter" - {
     "retainOnlyCustomUpstreamHeaders must retain only custom upstream headers" in {
-      val harness = new Harness()
-
       implicit val requestHeader = FakeRequest().withHeaders(
         "X-Forwarded-Host" -> "mdtp",
         "X-Correlation-ID" -> "137302f5-71ae-40a4-bd92-cac2ae7sde2f",
@@ -57,7 +44,7 @@ class BaseConnectorSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSui
         "Age" -> "0"
       )
 
-      val result: Seq[(String, String)] = harness.retainOnlyCustomUpstreamHeaders()
+      val result: Seq[(String, String)] = OutgoingRequestFilter.retainOnlyCustomUpstreamHeaders()
 
       result.size mustBe 7
 
@@ -71,24 +58,20 @@ class BaseConnectorSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSui
     }
 
     "enforceAuthHeaderCarrier must enforce auth" in {
-      val harness = new Harness()
-
       implicit val hc = HeaderCarrier()
       implicit val requestHeader = FakeRequest().withHeaders(HeaderNames.AUTHORIZATION -> "a5sesqerTyi135/")
 
-      val result: HeaderCarrier = harness.enforceAuthHeaderCarrier()
+      val result: HeaderCarrier = OutgoingRequestFilter.enforceAuthHeaderCarrier()
 
       result.headers must contain(HeaderNames.AUTHORIZATION -> "a5sesqerTyi135/")
       result.authorization mustBe Some(Authorization("a5sesqerTyi135/"))
     }
 
     "enforceAuthHeaderCarrier must add empty auth header if no auth header supplied in request" in {
-      val harness = new Harness()
-
       implicit val hc = HeaderCarrier()
       implicit val requestHeader = FakeRequest()
 
-      val result: HeaderCarrier = harness.enforceAuthHeaderCarrier()
+      val result: HeaderCarrier = OutgoingRequestFilter.enforceAuthHeaderCarrier()
 
       result.headers must contain(HeaderNames.AUTHORIZATION -> "")
       result.authorization mustBe Some(Authorization(""))

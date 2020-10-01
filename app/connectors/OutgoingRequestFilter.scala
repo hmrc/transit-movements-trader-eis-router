@@ -21,8 +21,8 @@ import play.api.mvc.RequestHeader
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.logging.Authorization
 
-class BaseConnector {
-  protected val CustomUpstreamHeaders = Seq(
+object OutgoingRequestFilter {
+  val CustomUpstreamHeaders = Seq(
     "X-Forwarded-Host",
     "X-Correlation-ID",
     "Date",
@@ -32,11 +32,11 @@ class BaseConnector {
     "X-Message-Sender"
   )
 
-  protected def retainOnlyCustomUpstreamHeaders()(implicit requestHeader: RequestHeader): Seq[(String, String)] = {
+  def retainOnlyCustomUpstreamHeaders()(implicit requestHeader: RequestHeader): Seq[(String, String)] = {
     requestHeader.headers.headers.filter(x => CustomUpstreamHeaders.contains(x._1))
   }
 
-  protected def enforceAuthHeaderCarrier()(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): HeaderCarrier = {
+  def enforceAuthHeaderCarrier()(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): HeaderCarrier = {
     val newHeaderCarrier = headerCarrier
       .copy(authorization = Some(Authorization(requestHeader.headers.get(HeaderNames.AUTHORIZATION).getOrElse(""))))
     newHeaderCarrier
