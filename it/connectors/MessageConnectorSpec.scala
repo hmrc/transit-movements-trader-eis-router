@@ -22,7 +22,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
       server.stubFor(
         post(
           urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
-        ).willReturn(aResponse().withStatus(ACCEPTED))
+        ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(ACCEPTED))
       )
 
       implicit val hc = HeaderCarrier()
@@ -41,7 +41,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         server.stubFor(
           post(
             urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
-          ).willReturn(aResponse().withStatus(INTERNAL_SERVER_ERROR))
+          ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(INTERNAL_SERVER_ERROR))
         )
 
         implicit val hc = HeaderCarrier()
@@ -60,7 +60,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
       server.stubFor(
         post(
           urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
-        ).willReturn(aResponse().withStatus(BAD_REQUEST))
+        ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(BAD_REQUEST))
       )
 
       implicit val hc = HeaderCarrier()
@@ -79,7 +79,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
       server.stubFor(
         post(
           urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
-        ).willReturn(aResponse().withStatus(UNAUTHORIZED))
+        ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(UNAUTHORIZED))
       )
 
       implicit val hc = HeaderCarrier()
@@ -98,7 +98,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
       server.stubFor(
         post(
           urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
-        ).willReturn(aResponse().withStatus(BAD_GATEWAY))
+        ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(BAD_GATEWAY))
       )
 
       implicit val hc = HeaderCarrier()

@@ -22,10 +22,7 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
-import play.api.http.HeaderNames
 import play.api.test.FakeRequest
-import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.http.logging.Authorization
 
 class OutgoingRequestFilterSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSuite with OptionValues with ScalaFutures with MockitoSugar with BeforeAndAfterEach {
   "OutgoingRequestFilter" - {
@@ -44,7 +41,7 @@ class OutgoingRequestFilterSpec extends AnyFreeSpec with Matchers with GuiceOneA
         "Age" -> "0"
       )
 
-      val result: Seq[(String, String)] = OutgoingRequestFilter.retainOnlyCustomUpstreamHeaders()
+      val result: Seq[(String, String)] = OutgoingRequestFilter()
 
       result.size mustBe 7
 
@@ -55,26 +52,6 @@ class OutgoingRequestFilterSpec extends AnyFreeSpec with Matchers with GuiceOneA
       result must contain("Accept" -> "application/xml")
       result must contain("X-Message-Type" -> "IE015")
       result must contain("X-Message-Sender" -> "MDTP-000000000000000000000000011-01")
-    }
-
-    "enforceAuthHeaderCarrier must enforce auth" in {
-      implicit val hc = HeaderCarrier()
-      implicit val requestHeader = FakeRequest().withHeaders(HeaderNames.AUTHORIZATION -> "a5sesqerTyi135/")
-
-      val result: HeaderCarrier = OutgoingRequestFilter.enforceAuthHeaderCarrier()
-
-      result.headers must contain(HeaderNames.AUTHORIZATION -> "a5sesqerTyi135/")
-      result.authorization mustBe Some(Authorization("a5sesqerTyi135/"))
-    }
-
-    "enforceAuthHeaderCarrier must add empty auth header if no auth header supplied in request" in {
-      implicit val hc = HeaderCarrier()
-      implicit val requestHeader = FakeRequest()
-
-      val result: HeaderCarrier = OutgoingRequestFilter.enforceAuthHeaderCarrier()
-
-      result.headers must contain(HeaderNames.AUTHORIZATION -> "")
-      result.authorization mustBe Some(Authorization(""))
     }
   }
 }
