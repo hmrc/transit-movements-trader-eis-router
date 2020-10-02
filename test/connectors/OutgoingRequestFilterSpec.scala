@@ -22,7 +22,6 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
-import play.api.http.HeaderNames
 import play.api.test.FakeRequest
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.logging.Authorization
@@ -59,22 +58,20 @@ class OutgoingRequestFilterSpec extends AnyFreeSpec with Matchers with GuiceOneA
 
     "enforceAuthHeaderCarrier must enforce auth" in {
       implicit val hc = HeaderCarrier()
-      implicit val requestHeader = FakeRequest().withHeaders(HeaderNames.AUTHORIZATION -> "a5sesqerTyi135/")
+      implicit val requestHeader = FakeRequest()
 
-      val result: HeaderCarrier = OutgoingRequestFilter.enforceAuthHeaderCarrier()
+      val result: HeaderCarrier = OutgoingRequestFilter.enforceAuthHeaderCarrier("a5sesqerTyi135/")
 
-      result.headers must contain(HeaderNames.AUTHORIZATION -> "a5sesqerTyi135/")
-      result.authorization mustBe Some(Authorization("a5sesqerTyi135/"))
+      result.authorization mustBe Some(Authorization("Bearer a5sesqerTyi135/"))
     }
 
     "enforceAuthHeaderCarrier must add empty auth header if no auth header supplied in request" in {
       implicit val hc = HeaderCarrier()
       implicit val requestHeader = FakeRequest()
 
-      val result: HeaderCarrier = OutgoingRequestFilter.enforceAuthHeaderCarrier()
+      val result: HeaderCarrier = OutgoingRequestFilter.enforceAuthHeaderCarrier("")
 
-      result.headers must contain(HeaderNames.AUTHORIZATION -> "")
-      result.authorization mustBe Some(Authorization(""))
+      result.authorization mustBe Some(Authorization("Bearer "))
     }
   }
 }

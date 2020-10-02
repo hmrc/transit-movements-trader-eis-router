@@ -37,6 +37,6 @@ class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit e
       url,
       xml,
       OutgoingRequestFilter.retainOnlyCustomUpstreamHeaders()
-    )(CustomHttpReader, OutgoingRequestFilter.enforceAuthHeaderCarrier(), implicitly)
+    )(CustomHttpReader, OutgoingRequestFilter.enforceAuthHeaderCarrier(config.eisBearerToken), implicitly)
   }
 }

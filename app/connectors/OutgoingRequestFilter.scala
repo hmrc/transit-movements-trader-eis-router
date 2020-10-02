@@ -16,7 +16,6 @@
 
 package connectors
 
-import play.api.http.HeaderNames
 import play.api.mvc.RequestHeader
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.logging.Authorization
@@ -36,9 +35,9 @@ object OutgoingRequestFilter {
     requestHeader.headers.headers.filter(x => CustomUpstreamHeaders.contains(x._1))
   }
 
-  def enforceAuthHeaderCarrier()(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): HeaderCarrier = {
+  def enforceAuthHeaderCarrier(eisBearerToken: String)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): HeaderCarrier = {
     val newHeaderCarrier = headerCarrier
-      .copy(authorization = Some(Authorization(requestHeader.headers.get(HeaderNames.AUTHORIZATION).getOrElse(""))))
+      .copy(authorization = Some(Authorization(s"Bearer ${eisBearerToken}")))
     newHeaderCarrier
   }
 }
