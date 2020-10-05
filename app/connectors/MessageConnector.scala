@@ -34,9 +34,6 @@ class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit e
     Logger.debug(s"About to send message:\n$xml")
     val url = config.eisUrl
 
-    val newHeaderCarrier = headerCarrier
-      .copy(authorization = Some(Authorization(s"Bearer ${config.eisBearerToken}")))
-
     Logger.debug("Request headers are: " + requestHeader.headers.headers)
     Logger.debug("Header carrier headers are: " + headerCarrier.headers)
     Logger.debug("Header carrier extra headers are: " + headerCarrier.extraHeaders)
@@ -44,12 +41,12 @@ class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit e
 
     val customHeaders = OutgoingRequestFilter()
 
-    Logger.debug("Setting custom headers: " + customHeaders)
+    Logger.debug("Custom headers are: " + customHeaders)
 
-    http.POSTString[HttpResponse](
-      url,
-      xml,
-      customHeaders
-    )(CustomHttpReader, newHeaderCarrier, implicitly)
+    val newHeaderCarrier = headerCarrier
+      .copy(authorization = Some(Authorization(s"Bearer ${config.eisBearerToken}")))
+      .withExtraHeaders(customHeaders: _*)
+
+    http.POSTString[HttpResponse](url, xml)(CustomHttpReader, newHeaderCarrier, implicitly)
   }
 }
