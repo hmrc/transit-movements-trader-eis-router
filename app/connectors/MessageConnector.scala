@@ -37,6 +37,11 @@ class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit e
     val newHeaderCarrier = headerCarrier
       .copy(authorization = Some(Authorization(s"Bearer ${config.eisBearerToken}")))
 
+    Logger.debug("Request headers are: " + requestHeader.headers.headers)
+    Logger.debug("Header carrier headers are: " + headerCarrier.headers)
+    Logger.debug("Header carrier extra headers are: " + headerCarrier.extraHeaders)
+    Logger.debug("Header carrier other headers are: " + headerCarrier.otherHeaders)
+
     val customHeaders = OutgoingRequestFilter()
 
     Logger.debug("Setting custom headers: " + customHeaders)
