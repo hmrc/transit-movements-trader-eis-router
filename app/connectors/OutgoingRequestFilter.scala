@@ -20,19 +20,19 @@ import play.api.mvc.RequestHeader
 
 object OutgoingRequestFilter {
   val CustomUpstreamHeaders = Seq(
-    "X-Forwarded-Host",
-    "X-Correlation-ID",
-    "Date",
-    "Content-Type",
-    "Accept",
-    "X-Message-Type",
-    "X-Message-Sender"
+    "x-forwarded-host",
+    "x-correlation-id",
+    "date",
+    "content-type",
+    "accept",
+    "x-message-type",
+    "x-message-sender"
   )
 
   def apply()(implicit requestHeader: RequestHeader): Seq[(String, String)] = {
     requestHeader.headers.headers.filter {
       case (name, _) =>
-        CustomUpstreamHeaders.contains(name)
+        CustomUpstreamHeaders.contains(name.toLowerCase())
     }
   }
 }
