@@ -37,10 +37,14 @@ class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit e
     val newHeaderCarrier = headerCarrier
       .copy(authorization = Some(Authorization(s"Bearer ${config.eisBearerToken}")))
 
+    val customHeaders = OutgoingRequestFilter()
+
+    Logger.debug("Setting custom headers: " + customHeaders)
+
     http.POSTString[HttpResponse](
       url,
       xml,
-      OutgoingRequestFilter()
+      customHeaders
     )(CustomHttpReader, newHeaderCarrier, implicitly)
   }
 }
