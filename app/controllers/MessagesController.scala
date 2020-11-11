@@ -16,14 +16,13 @@
 
 package controllers
 
-import javax.inject.{Inject, Singleton}
-import play.api.mvc.{Action, AnyContent, ControllerComponents, Request}
-import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import config.AppConfig
 import connectors.MessageConnector
+import javax.inject.{Inject, Singleton}
+import play.api.mvc.{Action, ControllerComponents, Request}
+import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.xml.NodeSeq
 
 @Singleton()
@@ -33,6 +32,8 @@ class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponent
   def post(): Action[NodeSeq] = Action.async(parse.xml) { implicit request: Request[NodeSeq] =>
     connector.post(request.body.toString()).map(response => response.status match {
       case ACCEPTED => Accepted ("Message accepted")
+      case INTERNAL_SERVER_ERROR => BadGateway
+      case GATEWAY_TIMEOUT => BadGateway
       case _ => Status(response.status) })
   }
 }
