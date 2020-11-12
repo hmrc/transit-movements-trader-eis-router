@@ -34,7 +34,7 @@ class CustomHttpReaderSpec extends AnyFreeSpec with Matchers with OptionValues w
 
   def sut(status: Int) = CustomHttpReader.read("POST", "abc", HttpResponse(status))
 
-  "must convert BAD_GATEWAY to BAD_GATEWAY" in {
+  "must convert GATEWAY_TIMEOUT to BAD_GATEWAY" in {
     sut(Status.GATEWAY_TIMEOUT).status mustEqual Status.BAD_GATEWAY
   }
 
