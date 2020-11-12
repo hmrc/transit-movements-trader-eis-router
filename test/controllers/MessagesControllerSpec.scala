@@ -113,19 +113,19 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppP
       val result = controller(mc).post()(fakeValidXmlRequest)
       status(result) shouldBe ACCEPTED
     }
-    "should return 502 Bad Gateway Error when message connector receives 500" in {
+    "should return 500 Internal Server Error when message connector receives 500" in {
       val mc = mock[MessageConnector]
       when(mc.post(any())(any(), any())).thenReturn(Future.successful(HttpResponse(INTERNAL_SERVER_ERROR, "")))
 
       val result = controller(mc).post()(fakeValidXmlRequest)
-      status(result) shouldBe BAD_GATEWAY
+      status(result) shouldBe INTERNAL_SERVER_ERROR
     }
-    "should return 502 Bad Gateway Error when message connector timeouts" in {
+    "should return 504 Gateway Timeout Error when message connector timeouts" in {
       val mc = mock[MessageConnector]
       when(mc.post(any())(any(), any())).thenReturn(Future.successful(HttpResponse(GATEWAY_TIMEOUT, "")))
 
       val result = controller(mc).post()(fakeValidXmlRequest)
-      status(result) shouldBe BAD_GATEWAY
+      status(result) shouldBe GATEWAY_TIMEOUT
     }
   }
 

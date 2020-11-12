@@ -30,16 +30,20 @@ class CustomHttpReaderSpec extends AnyFreeSpec with Matchers with OptionValues w
 
   val _2xxGenerator: Gen[Int] = Gen.oneOf(Seq(Status.OK, Status.CREATED, Status.ACCEPTED, Status.NO_CONTENT))
   val clientErrorGenerator: Gen[Int] = Gen.oneOf(Seq(Status.LOCKED, Status.FORBIDDEN, Status.NOT_FOUND, Status.BAD_REQUEST))
-  val serverErrorGenerator: Gen[Int] = Gen.oneOf(Seq(Status.INTERNAL_SERVER_ERROR, Status.NOT_IMPLEMENTED, Status.SERVICE_UNAVAILABLE, Status.GATEWAY_TIMEOUT))
+  val serverErrorGenerator: Gen[Int] = Gen.oneOf(Seq(Status.NOT_IMPLEMENTED, Status.SERVICE_UNAVAILABLE, Status.BAD_GATEWAY))
 
   def sut(status: Int) = CustomHttpReader.read("POST", "abc", HttpResponse(status))
 
-  "must convert BAD_GATEWAY to INTERNAL_SERVER_ERROR" in {
-    sut(Status.BAD_GATEWAY).status mustEqual Status.INTERNAL_SERVER_ERROR
+  "must convert BAD_GATEWAY to BAD_GATEWAY" in {
+    sut(Status.GATEWAY_TIMEOUT).status mustEqual Status.BAD_GATEWAY
   }
 
   "must convert UNAUTHORIZED to INTERNAL_SERVER_ERROR" in {
     sut(Status.UNAUTHORIZED).status mustEqual Status.INTERNAL_SERVER_ERROR
+  }
+
+  "must convert INTERNAL_SERVER_ERROR to BAD_GATEWAY" in {
+    sut(Status.INTERNAL_SERVER_ERROR).status mustEqual Status.BAD_GATEWAY
   }
 
   "must leave other error types alone" in {

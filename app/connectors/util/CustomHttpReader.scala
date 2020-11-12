@@ -27,7 +27,8 @@ object CustomHttpReader extends HttpReads[HttpResponse] with HttpErrorFunctions 
         s"\n  ${x._1} : ${x._2}"
     }}")
     response.status match {
-      case UNAUTHORIZED | BAD_GATEWAY => recode(INTERNAL_SERVER_ERROR, response)
+      case UNAUTHORIZED => recode(INTERNAL_SERVER_ERROR, response)
+      case INTERNAL_SERVER_ERROR | GATEWAY_TIMEOUT => recode(BAD_GATEWAY, response)
       case _ => response
     }
   }
