@@ -18,23 +18,23 @@ package controllers
 
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, Materializer}
-import org.scalatest.matchers.should.Matchers
-import org.scalatestplus.play.guice.GuiceOneAppPerSuite
-import play.api.{Configuration, Environment}
-import play.api.test.Helpers._
-import play.api.test.{FakeHeaders, FakeRequest, Helpers}
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import config.AppConfig
 import connectors.MessageConnector
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.when
 import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
+import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.http.{HeaderNames, MimeTypes}
 import play.api.libs.json.Json
 import play.api.mvc.AnyContentAsXml
-import org.mockito.Mockito.{reset, when}
-import org.mockito.ArgumentMatchers.any
-import org.scalatest.wordspec.AnyWordSpec
+import play.api.test.Helpers._
+import play.api.test.{FakeHeaders, FakeRequest, Helpers}
+import play.api.{Configuration, Environment}
 import uk.gov.hmrc.http.HttpResponse
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.concurrent.Future
 

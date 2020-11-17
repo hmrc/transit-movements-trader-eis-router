@@ -16,14 +16,13 @@
 
 package controllers
 
-import javax.inject.{Inject, Singleton}
-import play.api.mvc.{Action, AnyContent, ControllerComponents, Request}
-import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import config.AppConfig
 import connectors.MessageConnector
+import javax.inject.{Inject, Singleton}
+import play.api.mvc.{Action, ControllerComponents, Request}
+import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.xml.NodeSeq
 
 @Singleton()
