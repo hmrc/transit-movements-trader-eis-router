@@ -43,10 +43,8 @@ class OutgoingRequestFilterSpec extends AnyFreeSpec with Matchers with GuiceOneA
 
       val result: Seq[(String, String)] = OutgoingRequestFilter()
 
-      result.size mustBe 7
+      result.size mustBe 5
 
-      result must contain("X-Forwarded-Host" -> "mdtp")
-      result must contain("X-Correlation-ID" -> "137302f5-71ae-40a4-bd92-cac2ae7sde2f")
       result must contain("Date" -> "Tue, 29 Sep 2020 11:46:50 +0100")
       result must contain("Content-Type" -> "application/xml")
       result must contain("Accept" -> "application/xml")

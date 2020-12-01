@@ -20,8 +20,6 @@ import play.api.mvc.RequestHeader
 
 object OutgoingRequestFilter {
   val CustomUpstreamHeaders = Seq(
-    "x-forwarded-host",
-    "x-correlation-id",
     "date",
     "content-type",
     "accept",

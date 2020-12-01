@@ -9,31 +9,28 @@ import play.api.inject.guice.{GuiceApplicationBuilder, GuiceableModule}
 
 trait WiremockSuite extends BeforeAndAfterAll with BeforeAndAfterEach {
   this: Suite =>
-  protected val server: WireMockServer = new WireMockServer(wireMockConfig().dynamicPort())
+  protected val wiremockPort = 11111
+
+  protected val server: WireMockServer = new WireMockServer(wireMockConfig().port(wiremockPort))
 
   protected def portConfigKey: String
 
-  protected lazy val app: Application =
+  protected def appBuilder: GuiceApplicationBuilder =
     new GuiceApplicationBuilder()
       .configure(
         portConfigKey -> server.port().toString
       )
       .overrides(bindings: _*)
-      .build()
-
-  protected lazy val injector: Injector = app.injector
 
   protected def bindings: Seq[GuiceableModule] = Seq.empty
 
   override def beforeAll(): Unit = {
     server.start()
-    app
     super.beforeAll()
   }
 
   override def beforeEach(): Unit = {
     server.resetAll()
-    app
     super.beforeEach()
   }
 
