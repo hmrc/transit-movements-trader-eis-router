@@ -16,6 +16,8 @@
 
 package connectors
 
+import java.util.UUID
+
 import com.google.inject.Inject
 import config.AppConfig
 import connectors.util.CustomHttpReader
@@ -39,7 +41,7 @@ class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit e
     Logger.debug("Header carrier extra headers are: " + headerCarrier.extraHeaders)
     Logger.debug("Header carrier other headers are: " + headerCarrier.otherHeaders)
 
-    val customHeaders = OutgoingRequestFilter()
+    val customHeaders = OutgoingRequestFilter() ++ extraHeaders
 
     Logger.debug("Custom headers are: " + customHeaders)
 
@@ -49,4 +51,10 @@ class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit e
 
     http.POSTString[HttpResponse](url, xml)(CustomHttpReader, newHeaderCarrier, implicitly)
   }
+
+  private def extraHeaders: Seq[(String, String)] =
+    Seq(
+      "X-Correlation-Id" -> UUID.randomUUID().toString,
+      "CustomProcessHost" -> "Digital"
+    )
 }

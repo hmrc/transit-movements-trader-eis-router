@@ -1,113 +1,170 @@
 package connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock._
-import org.scalatest.concurrent.PatienceConfiguration.Timeout
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.matchers.should.Matchers
-import org.scalatestplus.play.guice.GuiceOneAppPerSuite
-import play.api.test.Helpers._
-import play.api.test.{FakeHeaders, FakeRequest, Helpers}
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
-import org.scalatestplus.mockito.MockitoSugar
-
-import scala.concurrent.duration.Duration
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import org.scalatestplus.mockito.MockitoSugar
+import play.api.test.FakeRequest
+import play.api.test.Helpers._
+import uk.gov.hmrc.http.HeaderCarrier
 
-class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite with ScalaFutures with MockitoSugar {
+class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite with ScalaFutures with MockitoSugar with IntegrationPatience {
   "post" should {
-    "return ACCEPTED when post is successful" in {
-      val connector = app.injector.instanceOf[MessageConnector]
 
-      server.stubFor(
-        post(
-          urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
-        ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(ACCEPTED))
-      )
+    "add CustomProcessHost and X-Correlation-Id headers to messages" in {
 
-      implicit val hc = HeaderCarrier()
-      implicit val requestHeader = FakeRequest()
+      val app = appBuilder.build()
 
-      val result = connector.post("<document></document>")
+      running(app) {
 
-      whenReady(result, Timeout(Duration.Inf)) { r =>
-        r.status mustEqual ACCEPTED
+        val connector = app.injector.instanceOf[MessageConnector]
+
+        implicit val hc = HeaderCarrier()
+        implicit val requestHeader = FakeRequest()
+
+        server.stubFor(
+          post(
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+          )
+          .withHeader("X-Correlation-Id", matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"))
+          .withHeader("CustomProcessHost", equalTo("Digital"))
+          .willReturn(aResponse().withStatus(ACCEPTED))
+        )
+
+        val result = connector.post("<document></document>").futureValue
+
+        result.status mustEqual ACCEPTED
       }
     }
 
-      "return INTERNAL_SERVER_ERROR" in {
+    "return ACCEPTED when post is successful" in {
+      val app = appBuilder.build()
+
+      running(app) {
         val connector = app.injector.instanceOf[MessageConnector]
 
         server.stubFor(
           post(
             urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
-          ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(INTERNAL_SERVER_ERROR))
+          ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(ACCEPTED))
         )
 
         implicit val hc = HeaderCarrier()
         implicit val requestHeader = FakeRequest()
 
-        val result = connector.post("<document></document>")
+        val result = connector.post("<document></document>").futureValue
 
-        whenReady(result, Timeout(Duration.Inf)) { r =>
-          r.status mustEqual INTERNAL_SERVER_ERROR
-        }
+        result.status mustEqual ACCEPTED
       }
+    }
+
+    "return BAD_GATEWAY when the server returns INTERNAL_SERVER_ERROR" in {
+
+      val app = appBuilder.build()
+
+      running(app) {
+        val connector = app.injector.instanceOf[MessageConnector]
+
+        server.stubFor(
+          post(
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+          ).willReturn(serverError())
+        )
+
+        implicit val hc = HeaderCarrier()
+        implicit val requestHeader = FakeRequest()
+
+        val result = connector.post("<document></document>").futureValue
+
+        result.status mustEqual BAD_GATEWAY
+      }
+    }
+
+    "return BAD_GATEWAY when the server returns GATEWAY_TIMEOUT" in {
+
+      val app = appBuilder.build()
+
+      running(app) {
+        val connector = app.injector.instanceOf[MessageConnector]
+
+        server.stubFor(
+          post(
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+          ).willReturn(aResponse().withStatus(GATEWAY_TIMEOUT))
+        )
+
+        implicit val hc = HeaderCarrier()
+        implicit val requestHeader = FakeRequest()
+
+        val result = connector.post("<document></document>").futureValue
+
+        result.status mustEqual BAD_GATEWAY
+      }
+    }
 
     "return BAD_REQUEST when post returns BAD_REQUEST" in {
-      val connector = app.injector.instanceOf[MessageConnector]
 
-      server.stubFor(
-        post(
-          urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
-        ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(BAD_REQUEST))
-      )
+      val app = appBuilder.build()
 
-      implicit val hc = HeaderCarrier()
-      implicit val requestHeader = FakeRequest()
+      running(app) {
+        val connector = app.injector.instanceOf[MessageConnector]
 
-      val result = connector.post("<document></document>")
+        server.stubFor(
+          post(
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+          ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(BAD_REQUEST))
+        )
 
-      whenReady(result, Timeout(Duration.Inf)) { r =>
-        r.status mustEqual BAD_REQUEST
+        implicit val hc = HeaderCarrier()
+        implicit val requestHeader = FakeRequest()
+
+        val result = connector.post("<document></document>").futureValue
+
+        result.status mustEqual BAD_REQUEST
       }
     }
 
     "return INTERNAL_SERVER_ERROR when post returns UNAUTHORIZED" in {
-      val connector = app.injector.instanceOf[MessageConnector]
+      val app = appBuilder.build()
 
-      server.stubFor(
-        post(
-          urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
-        ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(UNAUTHORIZED))
-      )
+      running(app) {
+        val connector = app.injector.instanceOf[MessageConnector]
 
-      implicit val hc = HeaderCarrier()
-      implicit val requestHeader = FakeRequest()
+        server.stubFor(
+          post(
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+          ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(UNAUTHORIZED))
+        )
 
-      val result = connector.post("<document></document>")
+        implicit val hc = HeaderCarrier()
+        implicit val requestHeader = FakeRequest()
 
-      whenReady(result, Timeout(Duration.Inf)) { r =>
-        r.status mustEqual INTERNAL_SERVER_ERROR
+        val result = connector.post("<document></document>").futureValue
+
+        result.status mustEqual INTERNAL_SERVER_ERROR
       }
     }
 
-    "return INTERNAL_SERVER_ERROR when post returns BAD_GATEWAY" in {
-      val connector = app.injector.instanceOf[MessageConnector]
+    "return BAD_GATEWAY when post returns BAD_GATEWAY" in {
+      val app = appBuilder.build()
 
-      server.stubFor(
-        post(
-          urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
-        ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(BAD_GATEWAY))
-      )
+      running(app) {
+        val connector = app.injector.instanceOf[MessageConnector]
 
-      implicit val hc = HeaderCarrier()
-      implicit val requestHeader = FakeRequest()
+        server.stubFor(
+          post(
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+          ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(BAD_GATEWAY))
+        )
 
-      val result = connector.post("<document></document>")
+        implicit val hc = HeaderCarrier()
+        implicit val requestHeader = FakeRequest()
 
-      whenReady(result, Timeout(Duration.Inf)) { r =>
-        r.status mustEqual INTERNAL_SERVER_ERROR
+        val result = connector.post("<document></document>").futureValue
+
+        result.status mustEqual BAD_GATEWAY
       }
     }
   }
