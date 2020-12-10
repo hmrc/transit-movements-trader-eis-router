@@ -33,17 +33,9 @@ import scala.concurrent.{ExecutionContext, Future}
 class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit ec: ExecutionContext) {
 
   def post(xml: String)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Future[HttpResponse] = {
-    Logger.debug(s"About to send message:\n$xml")
     val url = config.eisUrl
 
-    Logger.debug("Request headers are: " + requestHeader.headers.headers)
-    Logger.debug("Header carrier headers are: " + headerCarrier.headers)
-    Logger.debug("Header carrier extra headers are: " + headerCarrier.extraHeaders)
-    Logger.debug("Header carrier other headers are: " + headerCarrier.otherHeaders)
-
     val customHeaders = OutgoingRequestFilter() ++ extraHeaders
-
-    Logger.debug("Custom headers are: " + customHeaders)
 
     val newHeaderCarrier = headerCarrier
       .copy(authorization = Some(Authorization(s"Bearer ${config.eisBearerToken}")))
