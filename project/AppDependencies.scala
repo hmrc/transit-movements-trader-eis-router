@@ -5,8 +5,11 @@ import sbt._
 
 object AppDependencies {
 
+  private val catsVersion = "2.1.1"
+
   val compile = Seq(
-    "uk.gov.hmrc"             %% "bootstrap-backend-play-27"  % "3.2.0"
+    "uk.gov.hmrc"             %% "bootstrap-backend-play-27"  % "3.2.0",
+    "org.typelevel"     %% "cats-core"                 % catsVersion
   )
 
   val test = Seq(
@@ -18,6 +21,8 @@ object AppDependencies {
     "org.scalacheck"          %% "scalacheck"               % "1.14.3"                % "test, it",
     "org.mockito"             % "mockito-core"              % "3.3.3"                 % "test, it",
     "org.scalatestplus"       %% "mockito-3-2"              % "3.1.2.0"               % "test, it",
-    "org.scalatestplus"       %% "scalacheck-1-14"          % "3.2.2.0"               % "test, it"
+    "org.scalatestplus"       %% "scalacheck-1-14"          % "3.2.2.0"               % "test, it",
+    "org.typelevel"           %% "cats-core"                % catsVersion             % "test, it"
+
   )
 }
