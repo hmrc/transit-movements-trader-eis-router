@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponent
 
   def post(): Action[NodeSeq] = Action.async(parse.xml) { implicit request: Request[NodeSeq] =>
     routingService.submitMessage(request.body) match {
-      case Left(message) => Future.successful(BadRequest(message))
+      case Left(error) => Future.successful(BadRequest(error.message))
       case Right(response) => response.map {
         r =>
           r.status match {
