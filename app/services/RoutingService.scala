@@ -35,7 +35,7 @@ class RoutingService @Inject() (appConfig: AppConfig, messageConnector: MessageC
     MessageType.allMessages.filter(x => x.rootNode == xml.head.label).headOption match {
       case None => Left(InvalidMessageCode(s"Invalid Message Type: ${xml.head.label}"))
       case Some(messageType) =>
-        val officeEither: Either[ParseError, Office] = if(MessageType.departureValues.contains(messageType)) {
+        val officeEither: Either[ParseError, Office] = if(MessageType.arrivalValues.contains(messageType)) {
           officeOfDestination(xml)
         }
         else {
@@ -56,7 +56,7 @@ class RoutingService @Inject() (appConfig: AppConfig, messageConnector: MessageC
     }
   }
 
-  val officeOfDeparture: ReaderT[ParseHandler, NodeSeq, DepartureOffice] =
+  private val officeOfDeparture: ReaderT[ParseHandler, NodeSeq, DepartureOffice] =
     ReaderT[ParseHandler, NodeSeq, DepartureOffice](xml => {
       (xml \ "CUSOFFDEPEPT" \ "RefNumEPT1").text match {
         case departure if departure.isEmpty =>Left(DepartureEmpty("Departure Empty"))
@@ -64,7 +64,7 @@ class RoutingService @Inject() (appConfig: AppConfig, messageConnector: MessageC
       }
     })
 
-  val officeOfDestination: ReaderT[ParseHandler, NodeSeq, DestinationOffice] =
+  private val officeOfDestination: ReaderT[ParseHandler, NodeSeq, DestinationOffice] =
     ReaderT[ParseHandler, NodeSeq, DestinationOffice](xml => {
       (xml \ "CUSOFFDESEST" \ "RefNumEST1").text match {
         case destination if destination.isEmpty =>Left(DestinationEmpty("Destination Empty"))
