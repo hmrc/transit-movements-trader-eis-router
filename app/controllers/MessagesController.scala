@@ -32,6 +32,7 @@ class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponent
   def post(): Action[NodeSeq] = Action.async(parse.xml) { implicit request: Request[NodeSeq] =>
     connector.post(request.body.toString()).map(response => response.status match {
       case ACCEPTED => Accepted ("Message accepted")
+      case INTERNAL_SERVER_ERROR => BadGateway
       case _ => Status(response.status) })
   }
 }
