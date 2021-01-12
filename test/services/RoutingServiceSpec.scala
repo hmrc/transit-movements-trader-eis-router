@@ -76,11 +76,11 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
 
     "departure message forwarded to NI if departure office starts with XI" in {
       val input =
-      <CC928A>
+      <CC015B>
         <CUSOFFDEPEPT>
           <RefNumEPT1>XI12345</RefNumEPT1>
         </CUSOFFDEPEPT>
-      </CC928A>
+      </CC015B>
 
       val mc = mock[MessageConnector]
       when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
@@ -94,11 +94,11 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
 
     "destination message forwarded to NI if destination office starts with XI" in {
       val input =
-        <CC008A>
+        <CC007A>
           <CUSOFFDESEST>
             <RefNumEST1>XI12345</RefNumEST1>
           </CUSOFFDESEST>
-        </CC008A>
+        </CC007A>
 
       val mc = mock[MessageConnector]
       when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
@@ -113,11 +113,11 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
 
     "departure message forwarded to GB if departure office starts with GB" in {
       val input =
-        <CC928A>
+        <CC015B>
           <CUSOFFDEPEPT>
             <RefNumEPT1>GB12345</RefNumEPT1>
           </CUSOFFDEPEPT>
-        </CC928A>
+        </CC015B>
 
       val mc = mock[MessageConnector]
       when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
@@ -132,11 +132,11 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
 
     "destination message forwarded to GB if destination office starts with GB" in {
       val input =
-        <CC008A>
+        <CC007A>
           <CUSOFFDESEST>
             <RefNumEST1>GB12345</RefNumEST1>
           </CUSOFFDESEST>
-        </CC008A>
+        </CC007A>
 
       val mc = mock[MessageConnector]
       when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
@@ -151,11 +151,11 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
 
     "departure message forwarded to GB if departure office starts with other value" in {
       val input =
-        <CC928A>
+        <CC015B>
           <CUSOFFDEPEPT>
             <RefNumEPT1>AB12345</RefNumEPT1>
           </CUSOFFDEPEPT>
-        </CC928A>
+        </CC015B>
 
       val mc = mock[MessageConnector]
       when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
@@ -170,11 +170,11 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
 
     "destination message forwarded to GB if destination office starts with other value" in {
       val input =
-        <CC008A>
+        <CC007A>
           <CUSOFFDESEST>
             <RefNumEST1>AB12345</RefNumEST1>
           </CUSOFFDESEST>
-        </CC008A>
+        </CC007A>
 
       val mc = mock[MessageConnector]
       when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))

@@ -22,6 +22,7 @@ import config.AppConfig
 import connectors.MessageConnector
 import models.ParseError.{DepartureEmpty, DestinationEmpty, InvalidMessageCode}
 import models.{DepartureOffice, DestinationOffice, MessageType, Office, ParseError, ParseHandling}
+import play.api.Logger
 import play.api.mvc.RequestHeader
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 
@@ -42,16 +43,16 @@ class RoutingService @Inject() (appConfig: AppConfig, messageConnector: MessageC
           officeOfDeparture(xml)
         }
 
-        officeEither match {
-          case Left(error) => Left(error)
-          case Right(office) => {
+        officeEither.map {
+          office =>
             if(office.value.startsWith("XI")) {
-              Right(messageConnector.post(xml.toString(), appConfig.eisniUrl, appConfig.eisniBearerToken))
+              Logger.info("routing to NI")
+              messageConnector.post(xml.toString(), appConfig.eisniUrl, appConfig.eisniBearerToken)
             }
             else {
-              Right(messageConnector.post(xml.toString(), appConfig.eisgbUrl, appConfig.eisgbBearerToken))
+              Logger.info("routing to GB")
+              messageConnector.post(xml.toString(), appConfig.eisgbUrl, appConfig.eisgbBearerToken)
             }
-          }
         }
     }
   }
