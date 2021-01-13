@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,21 +17,29 @@
 package controllers
 
 import config.AppConfig
-import connectors.MessageConnector
 import javax.inject.{Inject, Singleton}
 import play.api.mvc.{Action, ControllerComponents, Request}
+import services.RoutingService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.xml.NodeSeq
 
 @Singleton()
-class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponents, connector: MessageConnector)
+class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponents, routingService: RoutingService)
   extends BackendController(cc) {
 
   def post(): Action[NodeSeq] = Action.async(parse.xml) { implicit request: Request[NodeSeq] =>
-    connector.post(request.body.toString()).map(response => response.status match {
-      case ACCEPTED => Accepted ("Message accepted")
-      case _ => Status(response.status) })
+    routingService.submitMessage(request.body) match {
+      case Left(error) => Future.successful(BadRequest(error.message))
+      case Right(response) => response.map {
+        r =>
+          r.status match {
+            case ACCEPTED => Accepted("Message accepted")
+            case _ => Status(r.status)
+          }
+      }
+    }
   }
 }

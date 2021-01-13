@@ -14,11 +14,8 @@
  * limitations under the License.
  */
 
-package logging
+package models
 
-import play.api.Logger
-
-trait Logging {
-
-  protected val logger: Logger = Logger(s"application.${this.getClass.getCanonicalName}")
+abstract class IeMetadata(val code: String, val rootNode: String) {
+  override val toString: String = code
 }

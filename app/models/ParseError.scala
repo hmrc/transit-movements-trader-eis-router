@@ -14,11 +14,22 @@
  * limitations under the License.
  */
 
-package logging
+package models
 
-import play.api.Logger
+import cats.implicits._
 
-trait Logging {
+sealed trait ParseError {
+  def message: String
+}
 
-  protected val logger: Logger = Logger(s"application.${this.getClass.getCanonicalName}")
+object ParseError extends ParseHandling {
+
+  final case class InvalidMessageCode(message: String) extends ParseError
+  final case class DestinationEmpty(message: String)   extends ParseError
+  final case class DepartureEmpty(message: String)     extends ParseError
+
+  def sequenceErrors[A](input: Seq[ParseHandler[A]]): ParseHandler[Seq[A]] = {
+    input.toList.sequence.map { _.toSeq }
+  }
+
 }

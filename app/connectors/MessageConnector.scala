@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,16 +31,14 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit ec: ExecutionContext) {
 
-  def post(xml: String)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Future[HttpResponse] = {
-    val url = config.eisUrl
-
+  def post(xml: String, submissionUrl: String, submissionToken: String)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Future[HttpResponse] = {
     val customHeaders = OutgoingRequestFilter() ++ extraHeaders
 
     val newHeaderCarrier = headerCarrier
-      .copy(authorization = Some(Authorization(s"Bearer ${config.eisBearerToken}")))
+      .copy(authorization = Some(Authorization(s"Bearer $submissionToken")))
       .withExtraHeaders(customHeaders: _*)
 
-    http.POSTString[HttpResponse](url, xml)(CustomHttpReader, newHeaderCarrier, implicitly)
+    http.POSTString[HttpResponse](submissionUrl, xml)(CustomHttpReader, newHeaderCarrier, implicitly)
   }
 
   private def extraHeaders: Seq[(String, String)] =

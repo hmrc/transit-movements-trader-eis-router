@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package logging
+package models
 
-import play.api.Logger
+trait ParseHandling {
 
-trait Logging {
+  type ParseHandler[A] = Either[ParseError, A]
 
-  protected val logger: Logger = Logger(s"application.${this.getClass.getCanonicalName}")
 }

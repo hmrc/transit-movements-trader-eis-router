@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package logging
+package models
 
-import play.api.Logger
-
-trait Logging {
-
-  protected val logger: Logger = Logger(s"application.${this.getClass.getCanonicalName}")
+trait Office {
+  def value: String
 }
+
+final case class DepartureOffice(value: String) extends Office
+final case class DestinationOffice(value: String) extends Office

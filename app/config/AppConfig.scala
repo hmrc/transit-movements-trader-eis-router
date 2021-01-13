@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,9 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   val graphiteHost: String     = config.get[String]("microservice.metrics.graphite.host")
 
   private val eisBaseUrl: String = servicesConfig.baseUrl("eis")
-  val eisUrl: String             = eisBaseUrl ++ config.get[String]("microservice.services.eis.uri")
-  val eisBearerToken: String     = config.get[String]("microservice.services.eis.headers.bearerToken")
+  val eisniUrl: String             = eisBaseUrl ++ config.get[String]("microservice.services.eis.ni.uri")
+  val eisniBearerToken: String     = config.get[String]("microservice.services.eis.ni.headers.bearerToken")
+  val eisgbUrl: String             = eisBaseUrl ++ config.get[String]("microservice.services.eis.gb.uri")
+  val eisgbBearerToken: String     = config.get[String]("microservice.services.eis.gb.headers.bearerToken")
+
 }
