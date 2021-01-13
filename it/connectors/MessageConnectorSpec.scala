@@ -51,7 +51,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         server.stubFor(
           post(
             urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(ACCEPTED))
+          ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB")).willReturn(aResponse().withStatus(ACCEPTED))
         )
 
         implicit val hc = HeaderCarrier()
@@ -62,7 +62,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         result.status mustEqual ACCEPTED
       }
     }
-    
+
     "return BAD_GATEWAY when the server returns INTERNAL_SERVER_ERROR" in {
 
       val app = appBuilder.build()
@@ -120,7 +120,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         server.stubFor(
           post(
             urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(BAD_REQUEST))
+          ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB")).willReturn(aResponse().withStatus(BAD_REQUEST))
         )
 
         implicit val hc = HeaderCarrier()
@@ -142,7 +142,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         server.stubFor(
           post(
             urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(UNAUTHORIZED))
+          ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB")).willReturn(aResponse().withStatus(UNAUTHORIZED))
         )
 
         implicit val hc = HeaderCarrier()
@@ -164,7 +164,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         server.stubFor(
           post(
             urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(BAD_GATEWAY))
+          ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB")).willReturn(aResponse().withStatus(BAD_GATEWAY))
         )
 
         implicit val hc = HeaderCarrier()
