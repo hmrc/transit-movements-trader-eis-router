@@ -28,7 +28,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
 
         server.stubFor(
           post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
           )
           .withHeader("X-Correlation-Id", matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"))
           .withHeader("CustomProcessHost", equalTo("Digital"))
@@ -50,7 +50,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
 
         server.stubFor(
           post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
           ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(ACCEPTED))
         )
 
@@ -62,7 +62,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         result.status mustEqual ACCEPTED
       }
     }
-
+    
     "return BAD_GATEWAY when the server returns INTERNAL_SERVER_ERROR" in {
 
       val app = appBuilder.build()
@@ -73,7 +73,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
 
         server.stubFor(
           post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
           ).willReturn(serverError())
         )
 
@@ -96,7 +96,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
 
         server.stubFor(
           post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
           ).willReturn(aResponse().withStatus(GATEWAY_TIMEOUT))
         )
 
@@ -119,7 +119,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
 
         server.stubFor(
           post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
           ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(BAD_REQUEST))
         )
 
@@ -141,7 +141,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
 
         server.stubFor(
           post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
           ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(UNAUTHORIZED))
         )
 
@@ -163,7 +163,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
 
         server.stubFor(
           post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures")
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
           ).withHeader("Authorization", equalTo("Bearer bearertokenhere")).willReturn(aResponse().withStatus(BAD_GATEWAY))
         )
 
