@@ -21,4 +21,4 @@ trait Office {
 }
 
 final case class DepartureOffice(value: String) extends Office
-final case class DestinationOffice(value: String) extends Office
+final case class PresentationOffice(value: String) extends Office

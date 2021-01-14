@@ -21,7 +21,7 @@ import org.mockito.Mockito.when
 import org.mockito.Mockito.verify
 import config.AppConfig
 import connectors.MessageConnector
-import models.ParseError.{DepartureEmpty, DestinationEmpty, InvalidMessageCode}
+import models.ParseError.{DepartureEmpty, InvalidMessageCode, PresentationEmpty}
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
@@ -50,8 +50,8 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
 
 
   "RoutingService" - {
-    "returns InvalidMessageCode if message has unknown rootNode" in {
-      val badXML = <ABCDE></ABCDE>
+    "returns InvalidMessageCode if message has incorrect message rootNode" in {
+      val badXML = <TransitWrapper><ABCDE></ABCDE></TransitWrapper>
 
       val result = service().submitMessage(badXML)
 
@@ -59,28 +59,24 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
     }
 
     "returns DepartureEmpty if departure message with no office of departure" in {
-      val input = <CC928A></CC928A>
+      val input = <TransitWrapper><CC928A></CC928A></TransitWrapper>
 
       val result = service().submitMessage(input)
 
       result mustBe a[Left[DepartureEmpty, _]]
     }
 
-    "returns DestinationEmpty if destination message with no office of destination" in {
-      val input = <CC008A></CC008A>
+    "returns DestinationEmpty if destination message with no office of presentation" in {
+      val input = <TransitWrapper><CC008A></CC008A></TransitWrapper>
 
       val result = service().submitMessage(input)
 
-      result mustBe a[Left[DestinationEmpty, _]]
+      result mustBe a[Left[PresentationEmpty, _]]
     }
 
     "departure message forwarded to NI if departure office starts with XI" in {
       val input =
-      <CC015B>
-        <CUSOFFDEPEPT>
-          <RefNumEPT1>XI12345</RefNumEPT1>
-        </CUSOFFDEPEPT>
-      </CC015B>
+        <TransitWrapper><CC015B><CUSOFFDEPEPT><RefNumEPT1>XI12345</RefNumEPT1></CUSOFFDEPEPT></CC015B></TransitWrapper>
 
       val mc = mock[MessageConnector]
       when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
@@ -92,13 +88,9 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
       verify(mc).post(any(), eqTo(appConfig.eisniUrl), eqTo(appConfig.eisniBearerToken))(any(), any())
     }
 
-    "destination message forwarded to NI if destination office starts with XI" in {
+    "destination message forwarded to NI if presentation office starts with XI" in {
       val input =
-        <CC007A>
-          <CUSOFFDESEST>
-            <RefNumEST1>XI12345</RefNumEST1>
-          </CUSOFFDESEST>
-        </CC007A>
+        <TransitWrapper><CC007A><CUSOFFPREOFFRES><RefNumRES1>XI12345</RefNumRES1></CUSOFFPREOFFRES></CC007A></TransitWrapper>
 
       val mc = mock[MessageConnector]
       when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
@@ -113,11 +105,7 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
 
     "departure message forwarded to GB if departure office starts with GB" in {
       val input =
-        <CC015B>
-          <CUSOFFDEPEPT>
-            <RefNumEPT1>GB12345</RefNumEPT1>
-          </CUSOFFDEPEPT>
-        </CC015B>
+        <TransitWrapper><CC015B><CUSOFFDEPEPT><RefNumEPT1>GB12345</RefNumEPT1></CUSOFFDEPEPT></CC015B></TransitWrapper>
 
       val mc = mock[MessageConnector]
       when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
@@ -130,13 +118,9 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
 
     }
 
-    "destination message forwarded to GB if destination office starts with GB" in {
+    "destination message forwarded to GB if presentation office starts with GB" in {
       val input =
-        <CC007A>
-          <CUSOFFDESEST>
-            <RefNumEST1>GB12345</RefNumEST1>
-          </CUSOFFDESEST>
-        </CC007A>
+        <TransitWrapper><CC007A><CUSOFFPREOFFRES><RefNumRES1>GB12345</RefNumRES1></CUSOFFPREOFFRES></CC007A></TransitWrapper>
 
       val mc = mock[MessageConnector]
       when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
@@ -151,11 +135,7 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
 
     "departure message forwarded to GB if departure office starts with other value" in {
       val input =
-        <CC015B>
-          <CUSOFFDEPEPT>
-            <RefNumEPT1>AB12345</RefNumEPT1>
-          </CUSOFFDEPEPT>
-        </CC015B>
+        <TransitWrapper><CC015B><CUSOFFDEPEPT><RefNumEPT1>AB12345</RefNumEPT1></CUSOFFDEPEPT></CC015B></TransitWrapper>
 
       val mc = mock[MessageConnector]
       when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
@@ -168,13 +148,9 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
 
     }
 
-    "destination message forwarded to GB if destination office starts with other value" in {
+    "destination message forwarded to GB if presentation office starts with other value" in {
       val input =
-        <CC007A>
-          <CUSOFFDESEST>
-            <RefNumEST1>AB12345</RefNumEST1>
-          </CUSOFFDESEST>
-        </CC007A>
+        <TransitWrapper><CC007A><CUSOFFPREOFFRES><RefNumRES1>AB12345</RefNumRES1></CUSOFFPREOFFRES></CC007A></TransitWrapper>
 
       val mc = mock[MessageConnector]
       when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
