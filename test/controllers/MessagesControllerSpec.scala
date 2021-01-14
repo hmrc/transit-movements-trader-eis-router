@@ -20,6 +20,8 @@ import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, Materializer}
 import config.AppConfig
 import connectors.MessageConnector
+import models.ParseError
+import models.ParseError.InvalidMessageCode
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
@@ -33,6 +35,7 @@ import play.api.mvc.AnyContentAsXml
 import play.api.test.Helpers._
 import play.api.test.{FakeHeaders, FakeRequest, Helpers}
 import play.api.{Configuration, Environment}
+import services.RoutingService
 import uk.gov.hmrc.http.HttpResponse
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
@@ -103,22 +106,29 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppP
   private val serviceConfig = new ServicesConfig(configuration)
   private val appConfig     = new AppConfig(configuration, serviceConfig)
 
-  private def controller(messageConnector: MessageConnector = mock[MessageConnector]) = new MessagesController(appConfig, Helpers.stubControllerComponents(), messageConnector)
+  private def controller(routingService: RoutingService = mock[RoutingService]) = new MessagesController(appConfig, Helpers.stubControllerComponents(), routingService)
 
   "POST any XML" should {
-    "should return 202 Accepted when message connector successful" in {
-      val mc = mock[MessageConnector]
-      when(mc.post(any())(any(), any())).thenReturn(Future.successful(HttpResponse(ACCEPTED, "")))
+    "should return 202 Accepted when routing service successful" in {
+      val rs = mock[RoutingService]
+      when(rs.submitMessage(any())(any(), any())).thenReturn(Right(Future.successful(HttpResponse(ACCEPTED, ""))))
 
-      val result = controller(mc).post()(fakeValidXmlRequest)
+      val result = controller(rs).post()(fakeValidXmlRequest)
       status(result) shouldBe ACCEPTED
     }
-    "should return BAD GATEWAY Error when message connector receives 500" in {
-      val mc = mock[MessageConnector]
-      when(mc.post(any())(any(), any())).thenReturn(Future.successful(HttpResponse(INTERNAL_SERVER_ERROR, "")))
+    "should return 500 BAD GATEWAY Error when routing service receives 500" in {
+      val rs = mock[RoutingService]
+      when(rs.submitMessage(any())(any(), any())).thenReturn(Right(Future.successful(HttpResponse(INTERNAL_SERVER_ERROR, ""))))
 
-      val result = controller(mc).post()(fakeValidXmlRequest)
+      val result = controller(rs).post()(fakeValidXmlRequest)
       status(result) shouldBe BAD_GATEWAY
+    }
+    "should return 400 Bad Request when parse error returned" in {
+      val rs = mock[RoutingService]
+      when(rs.submitMessage(any())(any(), any())).thenReturn(Left(InvalidMessageCode("test message")))
+
+      val result = controller(rs).post()(fakeValidXmlRequest)
+      status(result) shouldBe BAD_REQUEST
     }
   }
 
