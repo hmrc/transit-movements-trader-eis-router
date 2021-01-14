@@ -37,6 +37,7 @@ class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponent
         r =>
           r.status match {
             case ACCEPTED => Accepted("Message accepted")
+            case INTERNAL_SERVER_ERROR => BadGateway
             case _ => Status(r.status)
           }
       }

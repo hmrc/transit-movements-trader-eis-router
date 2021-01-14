@@ -116,12 +116,12 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppP
       val result = controller(rs).post()(fakeValidXmlRequest)
       status(result) shouldBe ACCEPTED
     }
-    "should return 500 Internal Server Error when routing service receives 500" in {
+    "should return 500 BAD GATEWAY Error when routing service receives 500" in {
       val rs = mock[RoutingService]
       when(rs.submitMessage(any())(any(), any())).thenReturn(Right(Future.successful(HttpResponse(INTERNAL_SERVER_ERROR, ""))))
 
       val result = controller(rs).post()(fakeValidXmlRequest)
-      status(result) shouldBe INTERNAL_SERVER_ERROR
+      status(result) shouldBe BAD_GATEWAY
     }
     "should return 400 Bad Request when parse error returned" in {
       val rs = mock[RoutingService]
