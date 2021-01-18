@@ -132,7 +132,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
       }
     }
 
-    "return INTERNAL_SERVER_ERROR when post returns UNAUTHORIZED" in {
+    "return INTERNAL_SERVER_ERROR when post returns FORBIDDEN" in {
       val app = appBuilder.build()
 
       running(app) {
@@ -142,7 +142,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         server.stubFor(
           post(
             urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB")).willReturn(aResponse().withStatus(UNAUTHORIZED))
+          ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB")).willReturn(aResponse().withStatus(FORBIDDEN))
         )
 
         implicit val hc = HeaderCarrier()
