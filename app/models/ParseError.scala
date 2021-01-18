@@ -25,7 +25,7 @@ sealed trait ParseError {
 object ParseError extends ParseHandling {
 
   final case class InvalidMessageCode(message: String) extends ParseError
-  final case class DestinationEmpty(message: String)   extends ParseError
+  final case class PresentationEmpty(message: String)   extends ParseError
   final case class DepartureEmpty(message: String)     extends ParseError
 
   def sequenceErrors[A](input: Seq[ParseHandler[A]]): ParseHandler[Seq[A]] = {

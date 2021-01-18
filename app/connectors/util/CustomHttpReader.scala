@@ -24,7 +24,7 @@ object CustomHttpReader extends HttpReads[HttpResponse] with HttpErrorFunctions 
 
   override def read(method: String, url: String, response: HttpResponse): HttpResponse = {
     response.status match {
-      case UNAUTHORIZED => recode(INTERNAL_SERVER_ERROR, response)
+      case FORBIDDEN => recode(INTERNAL_SERVER_ERROR, response)
       case INTERNAL_SERVER_ERROR | GATEWAY_TIMEOUT => recode(BAD_GATEWAY, response)
       case _ => response
     }
