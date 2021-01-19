@@ -48,11 +48,11 @@ class RoutingService @Inject() (appConfig: AppConfig, messageConnector: MessageC
           office =>
             if(office.value.startsWith("XI")) {
               logger.info("routing to NI")
-              messageConnector.post(rootXml.toString(), appConfig.eisniUrl, appConfig.eisniBearerToken)
+              messageConnector.post(xml.toString(), appConfig.eisniUrl, appConfig.eisniBearerToken)
             }
             else {
               logger.info("routing to GB")
-              messageConnector.post(rootXml.toString(), appConfig.eisgbUrl, appConfig.eisgbBearerToken)
+              messageConnector.post(xml.toString(), appConfig.eisgbUrl, appConfig.eisgbBearerToken)
             }
         }
     }
