@@ -133,6 +133,69 @@ class RoutingServiceSpec  extends AnyFreeSpec with Matchers with GuiceOneAppPerS
 
     }
 
+    "departure message forwarded to NI if departure office starts with XI (\\n formatted xml)" in {
+      val input =
+        <TransitWrapper>
+          <CC015B><CUSOFFDEPEPT><RefNumEPT1>XI12345</RefNumEPT1></CUSOFFDEPEPT></CC015B></TransitWrapper>
+
+      val mc = mock[MessageConnector]
+      when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
+
+      val result = service(mc).submitMessage(input)
+
+      result mustBe a[Right[_, Future[HttpResponse]]]
+
+      verify(mc).post(any(), eqTo(appConfig.eisniUrl), eqTo(appConfig.eisniBearerToken))(any(), any())
+    }
+
+    "destination message forwarded to NI if presentation office starts with XI (\\n formatted xml)" in {
+      val input =
+        <TransitWrapper>
+          <CC007A><CUSOFFPREOFFRES><RefNumRES1>XI12345</RefNumRES1></CUSOFFPREOFFRES></CC007A></TransitWrapper>
+
+      val mc = mock[MessageConnector]
+      when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
+
+      val result = service(mc).submitMessage(input)
+
+      result mustBe a[Right[_, Future[HttpResponse]]]
+
+      verify(mc).post(any(), eqTo(appConfig.eisniUrl), eqTo(appConfig.eisniBearerToken))(any(), any())
+
+    }
+
+    "departure message forwarded to GB if departure office starts with GB (\\n formatted xml)" in {
+      val input =
+        <TransitWrapper>
+          <CC015B><CUSOFFDEPEPT><RefNumEPT1>GB12345</RefNumEPT1></CUSOFFDEPEPT></CC015B></TransitWrapper>
+
+      val mc = mock[MessageConnector]
+      when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
+
+      val result = service(mc).submitMessage(input)
+
+      result mustBe a[Right[_, Future[HttpResponse]]]
+
+      verify(mc).post(any(), eqTo(appConfig.eisgbUrl), eqTo(appConfig.eisgbBearerToken))(any(), any())
+
+    }
+
+    "destination message forwarded to GB if presentation office starts with GB (\\n formatted xml)" in {
+      val input =
+        <TransitWrapper>
+<CC007A><CUSOFFPREOFFRES><RefNumRES1>GB12345</RefNumRES1></CUSOFFPREOFFRES></CC007A></TransitWrapper>
+
+      val mc = mock[MessageConnector]
+      when(mc.post(any(), any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200)))
+
+      val result = service(mc).submitMessage(input)
+
+      result mustBe a[Right[_, Future[HttpResponse]]]
+
+      verify(mc).post(any(), eqTo(appConfig.eisgbUrl), eqTo(appConfig.eisgbBearerToken))(any(), any())
+
+    }
+
     "departure message forwarded to GB if departure office starts with other value" in {
       val input =
         <TransitWrapper><CC015B><CUSOFFDEPEPT><RefNumEPT1>AB12345</RefNumEPT1></CUSOFFDEPEPT></CC015B></TransitWrapper>

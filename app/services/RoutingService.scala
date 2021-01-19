@@ -27,37 +27,43 @@ import play.api.mvc.RequestHeader
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 
 import scala.concurrent.Future
-import scala.xml.{Node, NodeSeq}
+import scala.xml.NodeSeq
 
 class RoutingService @Inject() (appConfig: AppConfig, messageConnector: MessageConnector) extends ParseHandling {
 
-  def submitMessage(xml: NodeSeq)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Either[ParseError, Future[HttpResponse]] = {
+  val logger = Logger(this.getClass)
 
-    MessageType.allMessages.filter(x => x.rootNode == messageRoot(xml).label).headOption match {
-      case None => Left(InvalidMessageCode(s"Invalid Message Type: ${xml.head.label}"))
-      case Some(messageType) =>
+  def submitMessage(xml: NodeSeq)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Either[ParseError, Future[HttpResponse]] = {
+    getValidRoot(xml) match {
+      case None => Left(InvalidMessageCode(s"Invalid Message Type"))
+      case Some((rootXml, messageType)) =>
         val officeEither: Either[ParseError, Office] = if(MessageType.arrivalValues.contains(messageType)) {
-          officeOfPresentation(messageRoot(xml))
+          officeOfPresentation(rootXml)
         }
         else {
-          officeOfDeparture(messageRoot(xml))
+          officeOfDeparture(rootXml)
         }
 
         officeEither.map {
           office =>
             if(office.value.startsWith("XI")) {
-              Logger.info("routing to NI")
+              logger.info("routing to NI")
               messageConnector.post(xml.toString(), appConfig.eisniUrl, appConfig.eisniBearerToken)
             }
             else {
-              Logger.info("routing to GB")
+              logger.info("routing to GB")
               messageConnector.post(xml.toString(), appConfig.eisgbUrl, appConfig.eisgbBearerToken)
             }
         }
     }
   }
 
-  private def messageRoot(xml: NodeSeq): Node = xml.head.child.head
+  private def getValidRoot(xml: NodeSeq): Option[(NodeSeq, MessageType)] = {
+    MessageType.validMessages.map { m =>
+      val result = (xml \\ m.rootNode)
+      (result, m)
+    }.filterNot(pair => pair._1 == NodeSeq.Empty).headOption
+  }
 
   private val officeOfDeparture: ReaderT[ParseHandler, NodeSeq, DepartureOffice] =
     ReaderT[ParseHandler, NodeSeq, DepartureOffice](xml => {
