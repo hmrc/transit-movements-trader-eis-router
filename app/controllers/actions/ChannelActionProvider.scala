@@ -14,22 +14,18 @@
  * limitations under the License.
  */
 
-package models
+package controllers.actions
 
-import cats.implicits._
+import com.google.inject.Inject
+import models.requests.ChannelRequest
+import play.api.mvc.{ActionBuilder, AnyContent, DefaultActionBuilder}
 
-sealed trait ParseError {
-  def message: String
-}
 
-object ParseError extends ParseHandling {
+class ChannelActionProvider @Inject()(
+      channelAction: ChannelAction,
+      buildDefault: DefaultActionBuilder
+    ) {
 
-  final case class InvalidMessageCode(message: String) extends ParseError
-  final case class PresentationEmpty(message: String)   extends ParseError
-  final case class DepartureEmpty(message: String)     extends ParseError
-
-  def sequenceErrors[A](input: Seq[ParseHandler[A]]): ParseHandler[Seq[A]] = {
-    input.toList.sequence.map { _.toSeq }
-  }
-
+  def apply(): ActionBuilder[ChannelRequest, AnyContent] =
+    buildDefault andThen channelAction
 }

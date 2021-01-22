@@ -21,7 +21,9 @@ import com.google.inject.Inject
 import config.AppConfig
 import connectors.MessageConnector
 import models.ParseError.{DepartureEmpty, InvalidMessageCode, PresentationEmpty}
-import models.{DepartureOffice, MessageType, Office, ParseError, ParseHandling, PresentationOffice}
+import models.RoutingOption.{Gb, Reject, Xi}
+import models.requests.ChannelRequest
+import models.{ChannelType, DepartureOffice, FailureMessage, MessageType, Office, ParseError, ParseHandling, PresentationOffice, RejectionMessage}
 import play.api.Logger
 import play.api.mvc.RequestHeader
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
@@ -33,7 +35,7 @@ class RoutingService @Inject() (appConfig: AppConfig, messageConnector: MessageC
 
   val logger = Logger(this.getClass)
 
-  def submitMessage(xml: NodeSeq)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Either[ParseError, Future[HttpResponse]] = {
+  def submitMessage(xml: NodeSeq)(implicit request: ChannelRequest[NodeSeq], requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Either[FailureMessage, Future[HttpResponse]] = {
     getValidRoot(xml) match {
       case None => Left(InvalidMessageCode(s"Invalid Message Type"))
       case Some((rootXml, messageType)) =>
@@ -44,17 +46,30 @@ class RoutingService @Inject() (appConfig: AppConfig, messageConnector: MessageC
           officeOfDeparture(rootXml)
         }
 
-        officeEither.map {
+        officeEither.flatMap {
           office =>
-            if(office.value.startsWith("XI")) {
-              logger.info("routing to NI")
-              messageConnector.post(xml.toString(), appConfig.eisniUrl, appConfig.eisniBearerToken)
-            }
-            else {
-              logger.info("routing to GB")
-              messageConnector.post(xml.toString(), appConfig.eisgbUrl, appConfig.eisgbBearerToken)
+            getEisDetails(office, request.channel).map {
+              details => messageConnector.post(xml.toString(), details.url, details.token)
             }
         }
+    }
+  }
+
+  private case class EisDetails(url: String, token: String, routingMessage: String)
+
+  private def getRoutingOption(office: Office, channelType: ChannelType) =
+    (office.value.startsWith("XI"), channelType) match {
+    case (true, _: ChannelType.web.type) => appConfig.webXiRouting
+    case (true, _: ChannelType.api.type) => appConfig.apiXiRouting
+    case (false, _: ChannelType.web.type) => appConfig.webGbRouting
+    case (false, _: ChannelType.api.type) => appConfig.apiGbRouting
+  }
+
+  private def getEisDetails(office: Office, channelType: ChannelType): Either[RejectionMessage, EisDetails] = {
+    getRoutingOption(office, channelType) match {
+      case Xi => Right(EisDetails(appConfig.eisniUrl, appConfig.eisniBearerToken, "routing to NI"))
+      case Gb => Right(EisDetails(appConfig.eisgbUrl, appConfig.eisgbBearerToken, "routing to GB"))
+      case Reject => Left(RejectionMessage(s"Routing to ${office.value.splitAt(2)._1} rejected on $channelType channel"))
     }
   }
 

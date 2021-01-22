@@ -17,7 +17,8 @@
 package config
 
 import javax.inject.{Inject, Singleton}
-import play.api.Configuration
+import models.RoutingOption
+import play.api.{ConfigLoader, Configuration}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 @Singleton
@@ -33,5 +34,11 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   val eisniBearerToken: String     = config.get[String]("microservice.services.eis.ni.headers.bearerToken")
   val eisgbUrl: String             = eisBaseUrl ++ config.get[String]("microservice.services.eis.gb.uri")
   val eisgbBearerToken: String     = config.get[String]("microservice.services.eis.gb.headers.bearerToken")
+
+  val apiXiRouting: RoutingOption = RoutingOption.parseRoutingOption(config.getOptional[String]("microservice.features.enableAPIXIRouting").getOrElse("Xi"))
+  val webXiRouting: RoutingOption = RoutingOption.parseRoutingOption(config.getOptional[String]("microservice.features.enableWebXIRouting").getOrElse("Xi"))
+  val apiGbRouting: RoutingOption = RoutingOption.parseRoutingOption(config.getOptional[String]("microservice.features.enableAPIGBRouting").getOrElse("Gb"))
+  val webGbRouting: RoutingOption = RoutingOption.parseRoutingOption(config.getOptional[String]("microservice.features.enableWebGBRouting").getOrElse("Gb"))
+
 
 }

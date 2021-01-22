@@ -17,7 +17,9 @@
 package controllers
 
 import config.AppConfig
+import controllers.actions.ChannelActionProvider
 import javax.inject.{Inject, Singleton}
+import models.requests.ChannelRequest
 import play.api.mvc.{Action, ControllerComponents, Request}
 import services.RoutingService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -27,10 +29,10 @@ import scala.concurrent.Future
 import scala.xml.NodeSeq
 
 @Singleton()
-class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponents, routingService: RoutingService)
+class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponents, channelActionProvider: ChannelActionProvider, routingService: RoutingService)
   extends BackendController(cc) {
 
-  def post(): Action[NodeSeq] = Action.async(parse.xml) { implicit request: Request[NodeSeq] =>
+  def post(): Action[NodeSeq] = channelActionProvider().async(parse.xml) { implicit request: ChannelRequest[NodeSeq] =>
     routingService.submitMessage(request.body) match {
       case Left(error) => Future.successful(BadRequest(error.message))
       case Right(response) => response.map {
