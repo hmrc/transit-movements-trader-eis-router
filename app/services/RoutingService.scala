@@ -21,9 +21,9 @@ import com.google.inject.Inject
 import config.AppConfig
 import connectors.MessageConnector
 import models.ParseError.{DepartureEmpty, InvalidMessageCode, PresentationEmpty}
-import models.RoutingOption.{Gb, Reject, Xi}
+import models.RoutingOption.Xi
 import models.requests.ChannelRequest
-import models.{ChannelType, DepartureOffice, FailureMessage, MessageType, Office, ParseError, ParseHandling, PresentationOffice, RejectionMessage}
+import models.{FailureMessage, MessageType, Office, ParseError, ParseHandling, PresentationOffice, RejectionMessage, RoutingOption}
 import play.api.Logger
 import play.api.mvc.RequestHeader
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
@@ -31,68 +31,28 @@ import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import scala.concurrent.Future
 import scala.xml.NodeSeq
 
-class RoutingService @Inject() (appConfig: AppConfig, messageConnector: MessageConnector) extends ParseHandling {
+class RoutingService @Inject() (fsrc: FeatureSwitchRouteConverter, messageConnector: MessageConnector) extends ParseHandling {
 
   val logger = Logger(this.getClass)
 
   def submitMessage(xml: NodeSeq)(implicit request: ChannelRequest[NodeSeq], requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Either[FailureMessage, Future[HttpResponse]] = {
-    getValidRoot(xml) match {
+    XmlParser.getValidRoot(xml) match {
       case None => Left(InvalidMessageCode(s"Invalid Message Type"))
       case Some((rootXml, messageType)) =>
         val officeEither: Either[ParseError, Office] = if(MessageType.arrivalValues.contains(messageType)) {
-          officeOfPresentation(rootXml)
+          XmlParser.officeOfPresentation(rootXml)
         }
         else {
-          officeOfDeparture(rootXml)
+          XmlParser.officeOfDeparture(rootXml)
         }
 
         officeEither.flatMap {
           office =>
-            getEisDetails(office, request.channel).map {
-              details => messageConnector.post(xml.toString(), details.url, details.token)
+            messageConnector.post(xml.toString(), fsrc.convert(office.getRoutingOption, request.channel)) match {
+              case Right(v) => Right(v)
+              case Left(_) => Left(RejectionMessage(s"Routing to ${office.value.splitAt(2)._1} rejected on ${request.channel} channel"))
             }
         }
     }
   }
-
-  private case class EisDetails(url: String, token: String, routingMessage: String)
-
-  private def getRoutingOption(office: Office, channelType: ChannelType) =
-    (office.value.startsWith("XI"), channelType) match {
-    case (true, _: ChannelType.web.type) => appConfig.webXiRouting
-    case (true, _: ChannelType.api.type) => appConfig.apiXiRouting
-    case (false, _: ChannelType.web.type) => appConfig.webGbRouting
-    case (false, _: ChannelType.api.type) => appConfig.apiGbRouting
-  }
-
-  private def getEisDetails(office: Office, channelType: ChannelType): Either[RejectionMessage, EisDetails] = {
-    getRoutingOption(office, channelType) match {
-      case Xi => Right(EisDetails(appConfig.eisniUrl, appConfig.eisniBearerToken, "routing to NI"))
-      case Gb => Right(EisDetails(appConfig.eisgbUrl, appConfig.eisgbBearerToken, "routing to GB"))
-      case Reject => Left(RejectionMessage(s"Routing to ${office.value.splitAt(2)._1} rejected on $channelType channel"))
-    }
-  }
-
-  private def getValidRoot(xml: NodeSeq): Option[(NodeSeq, MessageType)] = {
-    MessageType.validMessages.map { m =>
-      val result = (xml \\ m.rootNode)
-      (result, m)
-    }.filterNot(pair => pair._1 == NodeSeq.Empty).headOption
-  }
-
-  private val officeOfDeparture: ReaderT[ParseHandler, NodeSeq, DepartureOffice] =
-    ReaderT[ParseHandler, NodeSeq, DepartureOffice](xml => {
-      (xml \\ "CUSOFFDEPEPT" \ "RefNumEPT1").text match {
-        case departure if departure.isEmpty =>Left(DepartureEmpty("Departure Empty"))
-        case departure => Right(DepartureOffice(departure))
-      }
-    })
-
-  private val officeOfPresentation: ReaderT[ParseHandler, NodeSeq, PresentationOffice] =
-    ReaderT[ParseHandler, NodeSeq, PresentationOffice](xml => {
-      (xml \ "CUSOFFPREOFFRES" \ "RefNumRES1").text match {
-        case presentation if presentation.isEmpty => Left(PresentationEmpty("Presentation Empty"))
-        case presentation => Right(PresentationOffice(presentation))
-      }
-    })
 }

@@ -21,6 +21,8 @@ import java.util.UUID
 import com.google.inject.Inject
 import config.AppConfig
 import connectors.util.CustomHttpReader
+import models.RoutingOption.{Gb, Reject, Xi}
+import models.{ChannelType, Office, RejectionMessage, RoutingOption}
 import play.api.mvc.RequestHeader
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpResponse
@@ -31,19 +33,30 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit ec: ExecutionContext) {
 
-  def post(xml: String, submissionUrl: String, submissionToken: String)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Future[HttpResponse] = {
-    val customHeaders = OutgoingRequestFilter() ++ extraHeaders
-
-    val newHeaderCarrier = headerCarrier
-      .copy(authorization = Some(Authorization(s"Bearer $submissionToken")))
-      .withExtraHeaders(customHeaders: _*)
-
-    http.POSTString[HttpResponse](submissionUrl, xml)(CustomHttpReader, newHeaderCarrier, implicitly)
-  }
-
   private def extraHeaders: Seq[(String, String)] =
     Seq(
       "X-Correlation-Id" -> UUID.randomUUID().toString,
       "CustomProcessHost" -> "Digital"
     )
+
+  private case class EisDetails(url: String, token: String, routingMessage: String)
+
+  def post(xml: String, rOption: RoutingOption)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Either[RejectionMessage, Future[HttpResponse]] = {
+
+    (rOption match {
+      case Xi => Right(EisDetails(config.eisniUrl, config.eisniBearerToken, "routing to NI"))
+      case Gb => Right(EisDetails(config.eisgbUrl, config.eisgbBearerToken, "routing to GB"))
+      case _ => Left(RejectionMessage(s"Attempting to forward when rejecting is not possible."))
+    }).map {
+      details =>
+
+      val customHeaders = OutgoingRequestFilter() ++ extraHeaders
+      val newHeaderCarrier = headerCarrier
+        .copy(authorization = Some(Authorization(s"Bearer ${details.token}")))
+        .withExtraHeaders(customHeaders: _*)
+
+      http.POSTString[HttpResponse](details.url, xml)(CustomHttpReader, newHeaderCarrier, implicitly)
+    }
+
+  }
 }

@@ -17,15 +17,24 @@
 package models
 
 import models.RoutingOption.{Gb, Xi}
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.must.Matchers
 
-trait Office {
-  def value: String
-  def getRoutingOption: Option[RoutingOption] = value match {
-    case v if v.startsWith(Xi.toString.toUpperCase()) => Some(Xi)
-    case v if v.startsWith(Gb.toString.toUpperCase()) => Some(Gb)
-    case _ => None
+class OfficeSpec extends AnyFreeSpec with Matchers {
+
+  "Offices" - {
+    "getRoutingOption" - {
+      "must return Some(Gb) when the office starts with GB" in {
+        DepartureOffice("GB123").getRoutingOption mustBe Some(Gb)
+      }
+
+      "must return Some(Xi) when the office starts with XI" in {
+        DepartureOffice("XI123").getRoutingOption mustBe Some(Xi)
+      }
+
+      "must return None when the office starts with anything else" in {
+        DepartureOffice("12345").getRoutingOption mustBe None
+      }
+    }
   }
 }
-
-final case class DepartureOffice(value: String) extends Office
-final case class PresentationOffice(value: String) extends Office

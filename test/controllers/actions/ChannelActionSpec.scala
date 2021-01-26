@@ -17,7 +17,7 @@
 package controllers.actions
 
 import controllers.routes
-import models.ChannelType.{api, web}
+import models.ChannelType.{Api, Web}
 import models.requests.ChannelRequest
 import org.scalatest.EitherValues
 import org.scalatest.concurrent.ScalaFutures
@@ -46,8 +46,6 @@ class ChannelActionSpec extends AnyFreeSpec with Matchers with ScalaFutures with
 
       whenReady(futureResult) {
         result =>
-          result mustBe a[Left[Status, _]]
-
         status(Future.successful(result.left.get)) mustBe BAD_REQUEST
       }
     }
@@ -57,31 +55,25 @@ class ChannelActionSpec extends AnyFreeSpec with Matchers with ScalaFutures with
 
       whenReady(futureResult) {
         result =>
-          result mustBe a[Left[Status, _]]
-
           status(Future.successful(result.left.get)) mustBe BAD_REQUEST
       }
     }
 
     "returns ChannelRequest if channel header present (web)" in {
-      val futureResult = new Harness().call(FakeRequest("POST", routes.MessagesController.post().url, Headers("channel" -> web.toString), NodeSeq.Empty))
+      val futureResult = new Harness().call(FakeRequest("POST", routes.MessagesController.post().url, Headers("channel" -> Web.toString), NodeSeq.Empty))
 
       whenReady(futureResult) {
         result =>
-          result mustBe a[Right[_, ChannelRequest.type]]
-
-          result.right.get.channel mustBe web
+          result.right.get.channel mustBe Web
       }
     }
 
     "returns ChannelRequest if channel header present (api)" in {
-      val futureResult = new Harness().call(FakeRequest("POST", routes.MessagesController.post().url, Headers("channel" -> api.toString), NodeSeq.Empty))
+      val futureResult = new Harness().call(FakeRequest("POST", routes.MessagesController.post().url, Headers("channel" -> Api.toString), NodeSeq.Empty))
 
       whenReady(futureResult) {
         result =>
-          result mustBe a[Right[_, ChannelRequest.type]]
-
-          result.right.get.channel mustBe api
+          result.right.get.channel mustBe Api
       }
     }
   }

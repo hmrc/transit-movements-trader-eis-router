@@ -14,18 +14,20 @@
  * limitations under the License.
  */
 
-package controllers.actions
+package services
 
 import com.google.inject.Inject
-import models.requests.ChannelRequest
-import play.api.mvc.{ActionBuilder, AnyContent, DefaultActionBuilder}
+import config.AppConfig
+import models.RoutingOption.Xi
+import models.{ChannelType, RoutingOption}
 
+class FeatureSwitchRouteConverter @Inject()(appConfig: AppConfig) {
 
-class ChannelActionProvider @Inject()(
-      channelAction: ChannelAction,
-      buildDefault: DefaultActionBuilder
-    ) {
-
-  def apply(): ActionBuilder[ChannelRequest, AnyContent] =
-    buildDefault andThen channelAction
+  def convert(routingOption: Option[RoutingOption], channelType: ChannelType): RoutingOption =
+    (routingOption, channelType) match {
+    case (Some(Xi), _: ChannelType.Web.type) => appConfig.webXiRoute
+    case (Some(Xi), _: ChannelType.Api.type) => appConfig.apiXiRoute
+    case (_, _: ChannelType.Web.type) => appConfig.webGbRoute
+    case (_, _: ChannelType.Api.type) => appConfig.apiGbRoute
+  }
 }
