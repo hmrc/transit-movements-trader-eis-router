@@ -36,7 +36,8 @@ object RoutingOption extends Enumerable.Implicits {
     input match {
       case ro if ro.equals(Gb.toString) => Gb
       case ro if ro.equals(Xi.toString) => Xi
-      case _ => Reject
+      case ro if ro.equals(Reject.toString) => Reject
+      case _ => throw new Exception(s"Invalid Routing Option")
     }
 }
 
