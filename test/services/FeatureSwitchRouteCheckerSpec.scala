@@ -29,6 +29,7 @@ class FeatureSwitchRouteCheckerSpec extends AnyFreeSpec with MockitoSugar with M
 
   val routingOptionGen = Gen.oneOf[Boolean](true, false)
 
+  
   "canForward" - {
     "when input route is Xi and channel is web, must return the RoutingOption for webNi in the appConfig" in {
       forAll(routingOptionGen) {
