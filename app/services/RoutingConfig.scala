@@ -22,7 +22,6 @@ import play.api.Configuration
 @Singleton
 class RoutingConfig @Inject()(config: Configuration){
 
-  //TODO: Ensure AppConfig and RoutingConfig are Eager Singletons in a config.Module
   val apiXi: Boolean = config.get[Boolean]("microservice.features.routing.api.xi")
   val webXi: Boolean = config.get[Boolean]("microservice.features.routing.web.xi")
   val apiGb: Boolean = config.get[Boolean]("microservice.features.routing.api.gb")
