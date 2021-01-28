@@ -20,9 +20,8 @@ import com.google.inject.{Inject, Singleton}
 import play.api.Configuration
 
 @Singleton
-private[services] class RoutingConfig @Inject()(config: Configuration){
+class RoutingConfig @Inject()(config: Configuration){
 
-  //TODO: Move to own config package-private class in the services package.
   //TODO: Ensure AppConfig and RoutingConfig are Eager Singletons in a config.Module
   val apiXi: Boolean = config.get[Boolean]("microservice.features.routing.api.xi")
   val webXi: Boolean = config.get[Boolean]("microservice.features.routing.web.xi")
