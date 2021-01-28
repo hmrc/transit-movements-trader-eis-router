@@ -24,16 +24,16 @@ class OfficeSpec extends AnyFreeSpec with Matchers {
 
   "Offices" - {
     "getRoutingOption" - {
-      "must return Some(Gb) when the office starts with GB" in {
-        DepartureOffice("GB123").getRoutingOption mustBe Some(Gb)
+      "must return Gb when the office starts with GB" in {
+        DepartureOffice("GB123").getRoutingOption mustBe Gb
       }
 
-      "must return Some(Xi) when the office starts with XI" in {
-        DepartureOffice("XI123").getRoutingOption mustBe Some(Xi)
+      "must return Xi when the office starts with XI" in {
+        DepartureOffice("XI123").getRoutingOption mustBe Xi
       }
 
-      "must return None when the office starts with anything else" in {
-        DepartureOffice("12345").getRoutingOption mustBe None
+      "must return Gb when the office starts with anything else" in {
+        DepartureOffice("AB123").getRoutingOption mustBe Gb
       }
     }
   }

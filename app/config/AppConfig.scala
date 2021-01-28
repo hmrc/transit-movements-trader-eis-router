@@ -36,8 +36,4 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   val eisgbUrl: String             = eisBaseUrl ++ config.get[String]("microservice.services.eis.gb.uri")
   val eisgbBearerToken: String     = config.get[String]("microservice.services.eis.gb.headers.bearerToken")
 
-  val apiXiRoute: RoutingOption = RoutingOption.parseRoutingOption(config.get[String]("microservice.features.apiXIRoute"))
-  val webXiRoute: RoutingOption = RoutingOption.parseRoutingOption(config.get[String]("microservice.features.webXIRoute"))
-  val apiGbRoute: RoutingOption = RoutingOption.parseRoutingOption(config.get[String]("microservice.features.apiGBRoute"))
-  val webGbRoute: RoutingOption = RoutingOption.parseRoutingOption(config.get[String]("microservice.features.webGBRoute"))
 }

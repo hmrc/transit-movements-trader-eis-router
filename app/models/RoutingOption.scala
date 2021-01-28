@@ -25,19 +25,11 @@ sealed trait RoutingOption
 object RoutingOption extends Enumerable.Implicits {
   case object Gb extends RoutingOption
   case object Xi extends RoutingOption
-  case object Reject extends RoutingOption
 
-  val values: Seq[RoutingOption] = Seq(Gb, Xi, Reject)
+  val values: Seq[RoutingOption] = Seq(Gb, Xi)
 
   implicit val enumerable: Enumerable[RoutingOption] =
     Enumerable(values.map(v => v.toString -> v): _*)
 
-  def parseRoutingOption[A](input: String): RoutingOption =
-    input match {
-      case ro if ro.equals(Gb.toString) => Gb
-      case ro if ro.equals(Xi.toString) => Xi
-      case ro if ro.equals(Reject.toString) => Reject
-      case _ => throw new Exception(s"Invalid Routing Option")
-    }
 }
 

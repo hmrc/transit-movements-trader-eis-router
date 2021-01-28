@@ -22,7 +22,6 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
       running(app) {
 
         val connector = app.injector.instanceOf[MessageConnector]
-        val config = app.injector.instanceOf[AppConfig]
 
         implicit val hc = HeaderCarrier()
         implicit val requestHeader = FakeRequest()
@@ -36,7 +35,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
           .willReturn(aResponse().withStatus(ACCEPTED))
         )
 
-        val result = connector.post("<document></document>", Gb).right.get.futureValue
+        val result = connector.post("<document></document>", Gb).futureValue
 
         result.status mustEqual ACCEPTED
       }
@@ -58,7 +57,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         implicit val hc = HeaderCarrier()
         implicit val requestHeader = FakeRequest()
 
-        val result = connector.post("<document></document>", Gb).right.get.futureValue
+        val result = connector.post("<document></document>", Gb).futureValue
 
         result.status mustEqual ACCEPTED
       }
@@ -81,7 +80,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         implicit val hc = HeaderCarrier()
         implicit val requestHeader = FakeRequest()
 
-        val result = connector.post("<document></document>", Gb).right.get.futureValue
+        val result = connector.post("<document></document>", Gb).futureValue
 
         result.status mustEqual BAD_GATEWAY
       }
@@ -104,7 +103,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         implicit val hc = HeaderCarrier()
         implicit val requestHeader = FakeRequest()
 
-        val result = connector.post("<document></document>", Gb).right.get.futureValue
+        val result = connector.post("<document></document>", Gb).futureValue
 
         result.status mustEqual BAD_GATEWAY
       }
@@ -127,7 +126,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         implicit val hc = HeaderCarrier()
         implicit val requestHeader = FakeRequest()
 
-        val result = connector.post("<document></document>", Gb).right.get.futureValue
+        val result = connector.post("<document></document>", Gb).futureValue
 
         result.status mustEqual BAD_REQUEST
       }
@@ -149,7 +148,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         implicit val hc = HeaderCarrier()
         implicit val requestHeader = FakeRequest()
 
-        val result = connector.post("<document></document>", Gb).right.get.futureValue
+        val result = connector.post("<document></document>", Gb).futureValue
 
         result.status mustEqual INTERNAL_SERVER_ERROR
       }
@@ -171,7 +170,7 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
         implicit val hc = HeaderCarrier()
         implicit val requestHeader = FakeRequest()
 
-        val result = connector.post("<document></document>", Gb).right.get.futureValue
+        val result = connector.post("<document></document>", Gb).futureValue
 
         result.status mustEqual BAD_GATEWAY
       }

@@ -20,10 +20,9 @@ import models.RoutingOption.{Gb, Xi}
 
 trait Office {
   def value: String
-  def getRoutingOption: Option[RoutingOption] = value match {
-    case v if v.startsWith(Xi.toString.toUpperCase()) => Some(Xi)
-    case v if v.startsWith(Gb.toString.toUpperCase()) => Some(Gb)
-    case _ => None
+  def getRoutingOption: RoutingOption = value match {
+    case v if v.startsWith(Xi.toString.toUpperCase()) => Xi
+    case _ => Gb
   }
 }
 

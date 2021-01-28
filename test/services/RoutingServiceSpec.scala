@@ -19,13 +19,12 @@ package services
 import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.Mockito.when
 import org.mockito.Mockito.verify
-import config.AppConfig
 import connectors.MessageConnector
 import controllers.routes
 import models.{ChannelType, FailureMessage, RoutingOption}
-import models.ChannelType.{Api, Web}
+import models.ChannelType.Api
 import models.ParseError.{DepartureEmpty, InvalidMessageCode, PresentationEmpty}
-import models.RoutingOption.{Gb, Reject, Xi}
+import models.RoutingOption.{Gb, Xi}
 import models.requests.ChannelRequest
 import org.scalacheck.Gen
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
@@ -36,17 +35,15 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import play.api.http.{HeaderNames, MimeTypes}
-import play.api.{Configuration, Environment}
 import play.api.test.{FakeHeaders, FakeRequest}
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.concurrent.Future
 import scala.xml.NodeSeq
 
 class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSuite with OptionValues with ScalaFutures with MockitoSugar with BeforeAndAfterEach with ScalaCheckDrivenPropertyChecks {
 
-  private def service(fsrc: FeatureSwitchRouteConverter = mock[FeatureSwitchRouteConverter], messageConnector: MessageConnector = mock[MessageConnector]) = new RoutingService(fsrc, messageConnector)
+  private def service(fsrc: FeatureSwitchRouteChecker = mock[FeatureSwitchRouteChecker], messageConnector: MessageConnector = mock[MessageConnector]) = new RoutingService(fsrc, messageConnector)
 
   private def fakeRequest(channel: ChannelType): ChannelRequest[NodeSeq] =
     ChannelRequest(
@@ -63,138 +60,237 @@ class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSu
 
   "submitMessage" - {
 
-      "returns InvalidMessageCode if message has incorrect message rootNode" in {
-        val badXML = <TransitWrapper>
-          <ABCDE></ABCDE>
-        </TransitWrapper>
-        implicit val request = fakeRequest(Api)
+    "returns InvalidMessageCode if message has incorrect message rootNode" in {
+      val badXML = <TransitWrapper>
+        <ABCDE></ABCDE>
+      </TransitWrapper>
+      implicit val request = fakeRequest(Api)
 
-        val result = service().submitMessage(badXML)
+      val result = service().submitMessage(badXML)
 
-        result mustBe a[Left[InvalidMessageCode, _]]
-      }
+      result mustBe a[Left[InvalidMessageCode, _]]
+    }
 
-      "returns DepartureEmpty if departure message with no office of departure" in {
-        val input = <TransitWrapper>
-          <CC928A></CC928A>
-        </TransitWrapper>
-        implicit val request = fakeRequest(Api)
+    "returns DepartureEmpty if departure message with no office of departure" in {
+      val input = <TransitWrapper>
+        <CC928A></CC928A>
+      </TransitWrapper>
+      implicit val request = fakeRequest(Api)
 
-        val result = service().submitMessage(input)
+      val result = service().submitMessage(input)
 
-        result mustBe a[Left[DepartureEmpty, _]]
-      }
+      result mustBe a[Left[DepartureEmpty, _]]
+    }
 
-      "returns DestinationEmpty if destination message with no office of presentation" in {
-        val input = <TransitWrapper>
-          <CC008A></CC008A>
-        </TransitWrapper>
-        implicit val request = fakeRequest(Api)
+    "returns DestinationEmpty if destination message with no office of presentation" in {
+      val input = <TransitWrapper>
+        <CC008A></CC008A>
+      </TransitWrapper>
+      implicit val request = fakeRequest(Api)
 
-        val result = service().submitMessage(input)
+      val result = service().submitMessage(input)
 
-        result mustBe a[Left[PresentationEmpty, _]]
-      }
+      result mustBe a[Left[PresentationEmpty, _]]
+    }
 
-      "departure message starting with XI forwarded according to fsrc" in {
-        val input = <TransitWrapper>
-          <CC015B>
-            <CUSOFFDEPEPT>
-              <RefNumEPT1>XI12345</RefNumEPT1>
-            </CUSOFFDEPEPT>
-          </CC015B>
-        </TransitWrapper>
+    "departure message starting with XI sends XI flag when feature switch is true" in {
+      val input = <TransitWrapper>
+        <CC015B>
+          <CUSOFFDEPEPT>
+            <RefNumEPT1>XI12345</RefNumEPT1>
+          </CUSOFFDEPEPT>
+        </CC015B>
+      </TransitWrapper>
 
-        forAll(channelGen, routeGen) {
-          (channel, route) =>
-            implicit val request = fakeRequest(channel)
+      forAll(channelGen) {
+        channel =>
+          implicit val request = fakeRequest(channel)
 
-            val mc = mock[MessageConnector]
-            when(mc.post(any(), any())(any(), any())).thenReturn(Right(Future.successful(HttpResponse(200, ""))))
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-            val fsrc = mock[FeatureSwitchRouteConverter]
-            when(fsrc.convert(eqTo(Some(Xi)), eqTo(channel))).thenReturn(route)
+          val fsrc = mock[FeatureSwitchRouteChecker]
+          when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(true)
 
-            service(fsrc, mc).submitMessage(input)
+          service(fsrc, mc).submitMessage(input)
 
-            verify(mc).post(any(), eqTo(route))(any(), any())
-        }
-      }
-
-      "departure message starting with GB forwarded according to fsrc" in {
-        val input = <TransitWrapper>
-          <CC015B>
-            <CUSOFFDEPEPT>
-              <RefNumEPT1>GB12345</RefNumEPT1>
-            </CUSOFFDEPEPT>
-          </CC015B>
-        </TransitWrapper>
-
-
-        forAll(channelGen, routeGen) {
-          (channel, route) =>
-            implicit val request = fakeRequest(channel)
-
-            val mc = mock[MessageConnector]
-            when(mc.post(any(), any())(any(), any())).thenReturn(Right(Future.successful(HttpResponse(200, ""))))
-
-            val fsrc = mock[FeatureSwitchRouteConverter]
-            when(fsrc.convert(eqTo(Some(Gb)), eqTo(channel))).thenReturn(route)
-
-            service(fsrc, mc).submitMessage(input)
-
-            verify(mc).post(any(), eqTo(route))(any(), any())
-        }
-      }
-
-      "destination message starting with XI forwarded according to fsrc" in {
-        val input = <TransitWrapper>
-          <CC007A>
-            <CUSOFFPREOFFRES>
-              <RefNumRES1>XI12345</RefNumRES1>
-            </CUSOFFPREOFFRES>
-          </CC007A>
-        </TransitWrapper>
-
-        forAll(channelGen, routeGen) {
-          (channel, route) =>
-            implicit val request = fakeRequest(channel)
-
-            val mc = mock[MessageConnector]
-            when(mc.post(any(), any())(any(), any())).thenReturn(Right(Future.successful(HttpResponse(200, ""))))
-
-            val fsrc = mock[FeatureSwitchRouteConverter]
-            when(fsrc.convert(eqTo(Some(Xi)), eqTo(channel))).thenReturn(route)
-
-            service(fsrc, mc).submitMessage(input)
-
-            verify(mc).post(any(), eqTo(route))(any(), any())
-        }
-      }
-
-      "destination message starting with GB forwarded according to fsrc" in {
-        val input = <TransitWrapper>
-          <CC007A>
-            <CUSOFFPREOFFRES>
-              <RefNumRES1>GB12345</RefNumRES1>
-            </CUSOFFPREOFFRES>
-          </CC007A>
-        </TransitWrapper>
-
-        forAll(channelGen, routeGen) {
-          (channel, route) =>
-            implicit val request = fakeRequest(channel)
-
-            val mc = mock[MessageConnector]
-            when(mc.post(any(), any())(any(), any())).thenReturn(Right(Future.successful(HttpResponse(200, ""))))
-
-            val fsrc = mock[FeatureSwitchRouteConverter]
-            when(fsrc.convert(eqTo(Some(Gb)), eqTo(channel))).thenReturn(route)
-
-            service(fsrc, mc).submitMessage(input)
-
-            verify(mc).post(any(), eqTo(route))(any(), any())
-        }
+          verify(mc).post(any(), eqTo(Xi))(any(), any())
       }
     }
+
+    "departure message starting with XI is rejected feature switch is false" in {
+      val input = <TransitWrapper>
+        <CC015B>
+          <CUSOFFDEPEPT>
+            <RefNumEPT1>XI12345</RefNumEPT1>
+          </CUSOFFDEPEPT>
+        </CC015B>
+      </TransitWrapper>
+
+      forAll(channelGen) {
+        channel =>
+          implicit val request = fakeRequest(channel)
+
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+          val fsrc = mock[FeatureSwitchRouteChecker]
+          when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(false)
+
+          val result = service(fsrc, mc).submitMessage(input)
+
+          result mustBe a[Left[FailureMessage, _]]
+      }
+    }
+
+    "departure message starting with GB sends Gb flag when feature switch is true" in {
+      val input = <TransitWrapper>
+        <CC015B>
+          <CUSOFFDEPEPT>
+            <RefNumEPT1>GB12345</RefNumEPT1>
+          </CUSOFFDEPEPT>
+        </CC015B>
+      </TransitWrapper>
+
+      forAll(channelGen) {
+        channel =>
+          implicit val request = fakeRequest(channel)
+
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+          val fsrc = mock[FeatureSwitchRouteChecker]
+          when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
+
+          service(fsrc, mc).submitMessage(input)
+
+          verify(mc).post(any(), eqTo(Gb))(any(), any())
+      }
+    }
+
+    "departure message starting with GB is rejected feature switch is false" in {
+      val input = <TransitWrapper>
+        <CC015B>
+          <CUSOFFDEPEPT>
+            <RefNumEPT1>GB12345</RefNumEPT1>
+          </CUSOFFDEPEPT>
+        </CC015B>
+      </TransitWrapper>
+
+      forAll(channelGen) {
+        channel =>
+          implicit val request = fakeRequest(channel)
+
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+          val fsrc = mock[FeatureSwitchRouteChecker]
+          when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(false)
+
+          val result = service(fsrc, mc).submitMessage(input)
+
+          result mustBe a[Left[FailureMessage, _]]
+      }
+    }
+
+    "destination message starting with XI sends XI flag when feature switch is true" in {
+      val input = <TransitWrapper>
+        <CC007A>
+          <CUSOFFPREOFFRES>
+            <RefNumRES1>XI12345</RefNumRES1>
+          </CUSOFFPREOFFRES>
+        </CC007A>
+      </TransitWrapper>
+
+      forAll(channelGen) {
+        channel =>
+          implicit val request = fakeRequest(channel)
+
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+          val fsrc = mock[FeatureSwitchRouteChecker]
+          when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(true)
+
+          service(fsrc, mc).submitMessage(input)
+
+          verify(mc).post(any(), eqTo(Xi))(any(), any())
+      }
+    }
+
+    "destination message starting with XI is rejected feature switch is false" in {
+      val input = <TransitWrapper>
+        <CC007A>
+          <CUSOFFPREOFFRES>
+            <RefNumRES1>XI12345</RefNumRES1>
+          </CUSOFFPREOFFRES>
+        </CC007A>
+      </TransitWrapper>
+
+      forAll(channelGen) {
+        channel =>
+          implicit val request = fakeRequest(channel)
+
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+          val fsrc = mock[FeatureSwitchRouteChecker]
+          when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(false)
+
+          val result = service(fsrc, mc).submitMessage(input)
+
+          result mustBe a[Left[FailureMessage, _]]
+      }
+    }
+
+    "destination message starting with GB sends Gb flag when feature switch is true" in {
+      val input = <TransitWrapper>
+        <CC007A>
+          <CUSOFFPREOFFRES>
+            <RefNumRES1>GB12345</RefNumRES1>
+          </CUSOFFPREOFFRES>
+        </CC007A>
+      </TransitWrapper>
+
+      forAll(channelGen) {
+        channel =>
+          implicit val request = fakeRequest(channel)
+
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+          val fsrc = mock[FeatureSwitchRouteChecker]
+          when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
+
+          service(fsrc, mc).submitMessage(input)
+
+          verify(mc).post(any(), eqTo(Gb))(any(), any())
+      }
+    }
+
+    "destination message starting with GB is rejected feature switch is false" in {
+      val input = <TransitWrapper>
+        <CC007A>
+          <CUSOFFPREOFFRES>
+            <RefNumRES1>GB12345</RefNumRES1>
+          </CUSOFFPREOFFRES>
+        </CC007A>
+      </TransitWrapper>
+
+      forAll(channelGen) {
+        channel =>
+          implicit val request = fakeRequest(channel)
+
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+          val fsrc = mock[FeatureSwitchRouteChecker]
+          when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(false)
+
+          val result = service(fsrc, mc).submitMessage(input)
+
+          result mustBe a[Left[FailureMessage, _]]
+      }
+    }
+  }
 }

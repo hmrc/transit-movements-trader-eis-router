@@ -17,17 +17,18 @@
 package services
 
 import com.google.inject.Inject
-import config.AppConfig
-import models.RoutingOption.Xi
+import models.ChannelType.{Api, Web}
+import models.RoutingOption.{Gb, Xi}
 import models.{ChannelType, RoutingOption}
 
-class FeatureSwitchRouteConverter @Inject()(appConfig: AppConfig) {
+class FeatureSwitchRouteChecker @Inject()(routingConfig: RoutingConfig) {
 
-  def convert(routingOption: Option[RoutingOption], channelType: ChannelType): RoutingOption =
-    (routingOption, channelType) match {
-    case (Some(Xi), _: ChannelType.Web.type) => appConfig.webXiRoute
-    case (Some(Xi), _: ChannelType.Api.type) => appConfig.apiXiRoute
-    case (_, _: ChannelType.Web.type) => appConfig.webGbRoute
-    case (_, _: ChannelType.Api.type) => appConfig.apiGbRoute
+  def canForward(routingOption: RoutingOption, channelType: ChannelType): Boolean = {
+    (channelType, routingOption) match {
+      case (Api, Xi) => routingConfig.apiXi
+      case (Web, Xi) => routingConfig.webXi
+      case (Api, Gb) => routingConfig.apiGb
+      case (Web, Gb) => routingConfig.webGb
+    }
   }
 }

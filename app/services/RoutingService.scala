@@ -31,7 +31,7 @@ import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import scala.concurrent.Future
 import scala.xml.NodeSeq
 
-class RoutingService @Inject() (fsrc: FeatureSwitchRouteConverter, messageConnector: MessageConnector) extends ParseHandling {
+class RoutingService @Inject() (fsrc: FeatureSwitchRouteChecker, messageConnector: MessageConnector) extends ParseHandling {
 
   val logger = Logger(this.getClass)
 
@@ -48,9 +48,12 @@ class RoutingService @Inject() (fsrc: FeatureSwitchRouteConverter, messageConnec
 
         officeEither.flatMap {
           office =>
-            messageConnector.post(xml.toString(), fsrc.convert(office.getRoutingOption, request.channel)) match {
-              case Right(v) => Right(v)
-              case Left(_) => Left(RejectionMessage(s"Routing to ${office.value.splitAt(2)._1} rejected on ${request.channel} channel"))
+            val routingOption = office.getRoutingOption
+            if(fsrc.canForward(routingOption, request.channel)) {
+              Right(messageConnector.post(xml.toString(), routingOption))
+            }
+            else {
+              Left(RejectionMessage(s"Routing to ${office.value.splitAt(2)._1} rejected on ${request.channel} channel"))
             }
         }
     }
