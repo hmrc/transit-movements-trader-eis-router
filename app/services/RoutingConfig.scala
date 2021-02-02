@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package models
+package services
 
-import models.RoutingOption.{Gb, Xi}
+import com.google.inject.{Inject, Singleton}
+import play.api.Configuration
 
-trait Office {
-  def value: String
-  def getRoutingOption: RoutingOption = value match {
-    case v if v.startsWith(Xi.toString.toUpperCase()) => Xi
-    case _ => Gb
-  }
+@Singleton
+class RoutingConfig @Inject()(config: Configuration){
+
+  val apiXi: Boolean = config.get[Boolean]("microservice.features.routing.api.xi")
+  val webXi: Boolean = config.get[Boolean]("microservice.features.routing.web.xi")
+  val apiGb: Boolean = config.get[Boolean]("microservice.features.routing.api.gb")
+  val webGb: Boolean = config.get[Boolean]("microservice.features.routing.web.gb")
+
 }
-
-final case class DepartureOffice(value: String) extends Office
-final case class PresentationOffice(value: String) extends Office

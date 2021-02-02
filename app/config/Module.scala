@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-package models
+package config
 
-import models.RoutingOption.{Gb, Xi}
+import com.google.inject.AbstractModule
+import services.RoutingConfig
 
-trait Office {
-  def value: String
-  def getRoutingOption: RoutingOption = value match {
-    case v if v.startsWith(Xi.toString.toUpperCase()) => Xi
-    case _ => Gb
+class Module extends AbstractModule {
+
+  override def configure(): Unit = {
+    bind(classOf[AppConfig]).asEagerSingleton()
+    bind(classOf[RoutingConfig]).asEagerSingleton()
   }
-}
 
-final case class DepartureOffice(value: String) extends Office
-final case class PresentationOffice(value: String) extends Office
+}

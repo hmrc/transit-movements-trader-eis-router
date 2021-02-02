@@ -16,20 +16,20 @@
 
 package models
 
-import cats.implicits._
+import com.typesafe.config.Config
+import config.AppConfig
+import play.api.{ConfigLoader, Configuration}
 
-sealed trait ParseError {
-  def message: String
+sealed trait RoutingOption
+
+object RoutingOption extends Enumerable.Implicits {
+  case object Gb extends RoutingOption
+  case object Xi extends RoutingOption
+
+  val values: Seq[RoutingOption] = Seq(Gb, Xi)
+
+  implicit val enumerable: Enumerable[RoutingOption] =
+    Enumerable(values.map(v => v.toString -> v): _*)
+
 }
 
-object ParseError extends ParseHandling {
-
-  final case class InvalidMessageCode(message: String) extends ParseError
-  final case class PresentationEmpty(message: String)   extends ParseError
-  final case class DepartureEmpty(message: String)     extends ParseError
-
-  def sequenceErrors[A](input: Seq[ParseHandler[A]]): ParseHandler[Seq[A]] = {
-    input.toList.sequence.map { _.toSeq }
-  }
-
-}

@@ -21,7 +21,9 @@ import com.google.inject.Inject
 import config.AppConfig
 import connectors.MessageConnector
 import models.ParseError.{DepartureEmpty, InvalidMessageCode, PresentationEmpty}
-import models.{DepartureOffice, MessageType, Office, ParseError, ParseHandling, PresentationOffice}
+import models.RoutingOption.Xi
+import models.requests.ChannelRequest
+import models.{FailureMessage, MessageType, Office, ParseError, ParseHandling, PresentationOffice, RejectionMessage, RoutingOption}
 import play.api.Logger
 import play.api.mvc.RequestHeader
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
@@ -29,55 +31,31 @@ import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import scala.concurrent.Future
 import scala.xml.NodeSeq
 
-class RoutingService @Inject() (appConfig: AppConfig, messageConnector: MessageConnector) extends ParseHandling {
+class RoutingService @Inject() (fsrc: FeatureSwitchRouteChecker, messageConnector: MessageConnector) extends ParseHandling {
 
   val logger = Logger(this.getClass)
 
-  def submitMessage(xml: NodeSeq)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Either[ParseError, Future[HttpResponse]] = {
-    getValidRoot(xml) match {
+  def submitMessage(xml: NodeSeq)(implicit request: ChannelRequest[NodeSeq], requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Either[FailureMessage, Future[HttpResponse]] = {
+    XmlParser.getValidRoot(xml) match {
       case None => Left(InvalidMessageCode(s"Invalid Message Type"))
       case Some((rootXml, messageType)) =>
         val officeEither: Either[ParseError, Office] = if(MessageType.arrivalValues.contains(messageType)) {
-          officeOfPresentation(rootXml)
+          XmlParser.officeOfPresentation(rootXml)
         }
         else {
-          officeOfDeparture(rootXml)
+          XmlParser.officeOfDeparture(rootXml)
         }
 
-        officeEither.map {
+        officeEither.flatMap {
           office =>
-            if(office.value.startsWith("XI")) {
-              logger.info("routing to NI")
-              messageConnector.post(xml.toString(), appConfig.eisniUrl, appConfig.eisniBearerToken)
+            val routingOption = office.getRoutingOption
+            if(fsrc.canForward(routingOption, request.channel)) {
+              Right(messageConnector.post(xml.toString(), routingOption))
             }
             else {
-              logger.info("routing to GB")
-              messageConnector.post(xml.toString(), appConfig.eisgbUrl, appConfig.eisgbBearerToken)
+              Left(RejectionMessage(s"Routing to ${office.value.splitAt(2)._1} rejected on ${request.channel} channel"))
             }
         }
     }
   }
-
-  private def getValidRoot(xml: NodeSeq): Option[(NodeSeq, MessageType)] = {
-    MessageType.validMessages.map { m =>
-      val result = (xml \\ m.rootNode)
-      (result, m)
-    }.filterNot(pair => pair._1 == NodeSeq.Empty).headOption
-  }
-
-  private val officeOfDeparture: ReaderT[ParseHandler, NodeSeq, DepartureOffice] =
-    ReaderT[ParseHandler, NodeSeq, DepartureOffice](xml => {
-      (xml \\ "CUSOFFDEPEPT" \ "RefNumEPT1").text match {
-        case departure if departure.isEmpty =>Left(DepartureEmpty("Departure Empty"))
-        case departure => Right(DepartureOffice(departure))
-      }
-    })
-
-  private val officeOfPresentation: ReaderT[ParseHandler, NodeSeq, PresentationOffice] =
-    ReaderT[ParseHandler, NodeSeq, PresentationOffice](xml => {
-      (xml \ "CUSOFFPREOFFRES" \ "RefNumRES1").text match {
-        case presentation if presentation.isEmpty => Left(PresentationEmpty("Presentation Empty"))
-        case presentation => Right(PresentationOffice(presentation))
-      }
-    })
 }

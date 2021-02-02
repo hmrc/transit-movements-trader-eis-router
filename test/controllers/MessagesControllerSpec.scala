@@ -19,8 +19,8 @@ package controllers
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, Materializer}
 import config.AppConfig
-import connectors.MessageConnector
-import models.ParseError
+import controllers.actions.ChannelAction
+import models.ChannelType.Api
 import models.ParseError.InvalidMessageCode
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
@@ -80,19 +80,19 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppP
   private val fakeValidXmlRequest = FakeRequest(
     method = "POST",
     uri = routes.MessagesController.post().url,
-    headers = FakeHeaders(Seq(HeaderNames.CONTENT_TYPE -> MimeTypes.XML)),
+    headers = FakeHeaders(Seq(HeaderNames.CONTENT_TYPE -> MimeTypes.XML, "channel" -> Api.toString)),
     body = requestXmlBody)
 
   private val fakeEmptyRequest = FakeRequest(
     method = "POST",
     uri = routes.MessagesController.post().url,
-    headers = FakeHeaders(),
+    headers = FakeHeaders(Seq("channel" -> Api.toString)),
     body = AnyContentAsXml)
 
   private val fakeJsonRequest = FakeRequest(
     method = "POST",
     uri = routes.MessagesController.post().url,
-    headers = FakeHeaders(Seq(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)),
+    headers = FakeHeaders(Seq(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON, "channel" -> Api.toString)),
     body = Json.parse(""" {"key": "value"} """)
   )
 
@@ -106,26 +106,26 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with GuiceOneAppP
   private val serviceConfig = new ServicesConfig(configuration)
   private val appConfig     = new AppConfig(configuration, serviceConfig)
 
-  private def controller(routingService: RoutingService = mock[RoutingService]) = new MessagesController(appConfig, Helpers.stubControllerComponents(), routingService)
+  private def controller(routingService: RoutingService = mock[RoutingService]) = new MessagesController(appConfig, Helpers.stubControllerComponents(), app.injector.instanceOf[ChannelAction],routingService)
 
   "POST any XML" should {
     "should return 202 Accepted when routing service successful" in {
       val rs = mock[RoutingService]
-      when(rs.submitMessage(any())(any(), any())).thenReturn(Right(Future.successful(HttpResponse(ACCEPTED, ""))))
+      when(rs.submitMessage(any())(any(), any(), any())).thenReturn(Right(Future.successful(HttpResponse(ACCEPTED, ""))))
 
       val result = controller(rs).post()(fakeValidXmlRequest)
       status(result) shouldBe ACCEPTED
     }
     "should return 500 BAD GATEWAY Error when routing service receives 500" in {
       val rs = mock[RoutingService]
-      when(rs.submitMessage(any())(any(), any())).thenReturn(Right(Future.successful(HttpResponse(INTERNAL_SERVER_ERROR, ""))))
+      when(rs.submitMessage(any())(any(), any(), any())).thenReturn(Right(Future.successful(HttpResponse(INTERNAL_SERVER_ERROR, ""))))
 
       val result = controller(rs).post()(fakeValidXmlRequest)
       status(result) shouldBe BAD_GATEWAY
     }
     "should return 400 Bad Request when parse error returned" in {
       val rs = mock[RoutingService]
-      when(rs.submitMessage(any())(any(), any())).thenReturn(Left(InvalidMessageCode("test message")))
+      when(rs.submitMessage(any())(any(), any(), any())).thenReturn(Left(InvalidMessageCode("test message")))
 
       val result = controller(rs).post()(fakeValidXmlRequest)
       status(result) shouldBe BAD_REQUEST

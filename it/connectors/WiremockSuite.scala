@@ -18,7 +18,7 @@ trait WiremockSuite extends BeforeAndAfterAll with BeforeAndAfterEach {
   protected def appBuilder: GuiceApplicationBuilder =
     new GuiceApplicationBuilder()
       .configure(
-        portConfigKey -> server.port().toString
+        portConfigKey -> server.port().toString,
       )
       .overrides(bindings: _*)
 

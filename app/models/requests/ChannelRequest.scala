@@ -14,17 +14,9 @@
  * limitations under the License.
  */
 
-package models
+package models.requests
 
-import models.RoutingOption.{Gb, Xi}
+import models.ChannelType
+import play.api.mvc.{Request, WrappedRequest}
 
-trait Office {
-  def value: String
-  def getRoutingOption: RoutingOption = value match {
-    case v if v.startsWith(Xi.toString.toUpperCase()) => Xi
-    case _ => Gb
-  }
-}
-
-final case class DepartureOffice(value: String) extends Office
-final case class PresentationOffice(value: String) extends Office
+case class ChannelRequest[A](request: Request[A], channel: ChannelType) extends WrappedRequest[A](request)

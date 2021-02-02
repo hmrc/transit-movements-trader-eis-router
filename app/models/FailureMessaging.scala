@@ -16,15 +16,24 @@
 
 package models
 
-import models.RoutingOption.{Gb, Xi}
+import cats.implicits._
 
-trait Office {
-  def value: String
-  def getRoutingOption: RoutingOption = value match {
-    case v if v.startsWith(Xi.toString.toUpperCase()) => Xi
-    case _ => Gb
-  }
+trait FailureMessage {
+  def message: String
 }
 
-final case class DepartureOffice(value: String) extends Office
-final case class PresentationOffice(value: String) extends Office
+final case class RejectionMessage(message: String) extends FailureMessage
+
+sealed trait ParseError extends FailureMessage
+
+object ParseError extends ParseHandling {
+
+  final case class InvalidMessageCode(message: String) extends ParseError
+  final case class PresentationEmpty(message: String)   extends ParseError
+  final case class DepartureEmpty(message: String)     extends ParseError
+
+  def sequenceErrors[A](input: Seq[ParseHandler[A]]): ParseHandler[Seq[A]] = {
+    input.toList.sequence.map { _.toSeq }
+  }
+
+}

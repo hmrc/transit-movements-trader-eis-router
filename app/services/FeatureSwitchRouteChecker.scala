@@ -14,17 +14,21 @@
  * limitations under the License.
  */
 
-package models
+package services
 
+import com.google.inject.Inject
+import models.ChannelType.{Api, Web}
 import models.RoutingOption.{Gb, Xi}
+import models.{ChannelType, RoutingOption}
 
-trait Office {
-  def value: String
-  def getRoutingOption: RoutingOption = value match {
-    case v if v.startsWith(Xi.toString.toUpperCase()) => Xi
-    case _ => Gb
+class FeatureSwitchRouteChecker @Inject()(routingConfig: RoutingConfig) {
+
+  def canForward(routingOption: RoutingOption, channelType: ChannelType): Boolean = {
+    (channelType, routingOption) match {
+      case (Api, Xi) => routingConfig.apiXi
+      case (Web, Xi) => routingConfig.webXi
+      case (Api, Gb) => routingConfig.apiGb
+      case (Web, Gb) => routingConfig.webGb
+    }
   }
 }
-
-final case class DepartureOffice(value: String) extends Office
-final case class PresentationOffice(value: String) extends Office

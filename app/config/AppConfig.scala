@@ -17,7 +17,9 @@
 package config
 
 import javax.inject.{Inject, Singleton}
-import play.api.Configuration
+import models.RoutingOption
+import models.RoutingOption.{Gb, Xi}
+import play.api.{ConfigLoader, Configuration}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 @Singleton

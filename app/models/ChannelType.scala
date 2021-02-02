@@ -16,15 +16,15 @@
 
 package models
 
-import models.RoutingOption.{Gb, Xi}
+sealed trait ChannelType
 
-trait Office {
-  def value: String
-  def getRoutingOption: RoutingOption = value match {
-    case v if v.startsWith(Xi.toString.toUpperCase()) => Xi
-    case _ => Gb
-  }
+object ChannelType extends Enumerable.Implicits {
+  case object Web extends ChannelType { override def toString: String = "web" }
+  case object Api extends ChannelType { override def toString: String = "api" }
+
+  val values: Seq[ChannelType] = Seq(Web, Api)
+
+  implicit val enumerable: Enumerable[ChannelType] =
+    Enumerable(values.map(v => v.toString -> v): _*)
+
 }
-
-final case class DepartureOffice(value: String) extends Office
-final case class PresentationOffice(value: String) extends Office

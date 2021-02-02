@@ -34,7 +34,7 @@ class ParseErrorSpec extends AnyFreeSpec with ParseHandling with Matchers with G
       result mustBe a[Left[InvalidMessageCode, _]]
     }
 
-    "must uplift a seq of Parsehandlers exposing no error if there are none" in {
+    "must uplift a seq of ParseHandlers exposing no error if there are none" in {
       val inputSequence = Seq(Right("test1"), Right("test2"), Right("test3"))
       val result = ParseError.sequenceErrors(inputSequence)
 
