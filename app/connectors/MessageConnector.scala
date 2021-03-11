@@ -28,6 +28,8 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpResponse
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.logging.Authorization
+import play.api.Logger
+
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -52,6 +54,8 @@ class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit e
     val newHeaderCarrier = headerCarrier
       .copy(authorization = Some(Authorization(s"Bearer ${details.token}")))
       .withExtraHeaders(customHeaders: _*)
+
+    Logger.info(s"Posting NCTS message to ${details.url}, ${details.routingMessage}")
 
     http.POSTString[HttpResponse](details.url, xml)(CustomHttpReader, newHeaderCarrier, implicitly)
   }
