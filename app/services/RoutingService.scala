@@ -40,15 +40,19 @@ class RoutingService @Inject() (fsrc: FeatureSwitchRouteChecker, messageConnecto
       case None => Left(InvalidMessageCode(s"Invalid Message Type"))
       case Some((rootXml, messageType)) =>
         val officeEither: Either[ParseError, Office] = if(MessageType.arrivalValues.contains(messageType)) {
+          Logger.debug("Determining office of presentation ...")
           XmlParser.officeOfPresentation(rootXml)
         }
         else {
+          Logger.debug("Determining office of departure ...")
           XmlParser.officeOfDeparture(rootXml)
         }
+
 
         officeEither.flatMap {
           office =>
             val routingOption = office.getRoutingOption
+            Logger.debug(s"Office of departure/presentation ${office} routing option ${routingOption} with channel ${request.channel}")
             if(fsrc.canForward(routingOption, request.channel)) {
               Right(messageConnector.post(xml.toString(), routingOption))
             }
