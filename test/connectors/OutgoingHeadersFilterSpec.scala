@@ -16,18 +16,19 @@
 
 package connectors
 
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.OptionValues
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
-import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.test.FakeRequest
 
-class OutgoingRequestFilterSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSuite with OptionValues with ScalaFutures with MockitoSugar with BeforeAndAfterEach {
-  "OutgoingRequestFilter" - {
-    "retainOnlyCustomUpstreamHeaders must retain only custom upstream headers" in {
-      implicit val requestHeader = FakeRequest().withHeaders(
+class OutgoingHeadersFilterSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSuite with OptionValues with ScalaFutures with MockitoSugar with BeforeAndAfterEach {
+  "OutgoingHeadersFilter" - {
+    "headersFromRequest must retain only custom upstream headers" in {
+      val requestHeader = FakeRequest().withHeaders(
         "X-Forwarded-Host" -> "mdtp",
         "X-Correlation-ID" -> "137302f5-71ae-40a4-bd92-cac2ae7sde2f",
         "Date" -> "Tue, 29 Sep 2020 11:46:50 +0100",
@@ -41,7 +42,7 @@ class OutgoingRequestFilterSpec extends AnyFreeSpec with Matchers with GuiceOneA
         "Age" -> "0"
       )
 
-      val result: Seq[(String, String)] = OutgoingRequestFilter()
+      val result: Seq[(String, String)] = OutgoingHeadersFilter.headersFromRequest(requestHeader)
 
       result.size mustBe 5
 

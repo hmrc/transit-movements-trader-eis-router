@@ -16,12 +16,13 @@
 
 package models
 
-import models.RoutingOption.{Gb, Xi}
+import models.RoutingOption.Gb
+import models.RoutingOption.Xi
 
-trait Office {
+sealed abstract class Office extends Product with Serializable {
   def value: String
   def getRoutingOption: RoutingOption = value match {
-    case v if v.startsWith(Xi.toString.toUpperCase()) => Xi
+    case v if v.startsWith(Xi.prefix) => Xi
     case _ => Gb
   }
 }

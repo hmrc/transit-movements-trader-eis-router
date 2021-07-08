@@ -16,47 +16,47 @@
 
 package connectors
 
-import java.util.UUID
-
 import com.google.inject.Inject
 import config.AppConfig
-import connectors.util.CustomHttpReader
-import models.RoutingOption.{Gb, Xi}
+import logging.Logging
 import models.RoutingOption
-import play.api.mvc.RequestHeader
+import models.RoutingOption.Gb
+import models.RoutingOption.Xi
+import models.requests.ChannelRequest
+import uk.gov.hmrc.http.Authorization
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.http.HttpResponse
 import uk.gov.hmrc.http.HttpClient
-import uk.gov.hmrc.http.logging.Authorization
-import play.api.Logger
+import uk.gov.hmrc.http.HttpReads.Implicits._
+import uk.gov.hmrc.http.HttpResponse
 
+import java.util.UUID
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.xml.NodeSeq
 
-import scala.concurrent.{ExecutionContext, Future}
-
-class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit ec: ExecutionContext) {
-
-  private def extraHeaders: Seq[(String, String)] =
-    Seq(
-      "X-Correlation-Id" -> UUID.randomUUID().toString,
-      "CustomProcessHost" -> "Digital"
-    )
+class MessageConnector @Inject() (config: AppConfig, http: HttpClient) extends Logging {
 
   private case class EisDetails(url: String, token: String, routingMessage: String)
 
-  def post(xml: String, rOption: RoutingOption)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Future[HttpResponse] = {
-
-    val details = (rOption match {
+  def post(request: ChannelRequest[NodeSeq], routingOption: RoutingOption, headerCarrier: HeaderCarrier)(implicit
+    ec: ExecutionContext
+  ): Future[HttpResponse] = {
+    val details = routingOption match {
       case Xi => EisDetails(config.eisniUrl, config.eisniBearerToken, "routing to NI")
       case Gb => EisDetails(config.eisgbUrl, config.eisgbBearerToken, "routing to GB")
-    })
+    }
 
-    val customHeaders = OutgoingRequestFilter() ++ extraHeaders
-    val newHeaderCarrier = headerCarrier
-      .copy(authorization = Some(Authorization(s"Bearer ${details.token}")))
-      .withExtraHeaders(customHeaders: _*)
+    implicit val headerCarrierWithEisBearerToken = headerCarrier.copy(authorization = Some(Authorization(s"Bearer ${details.token}")))
 
-    Logger.info(s"Posting NCTS message to ${details.url}, ${details.routingMessage}")
+    val correlationId = UUID.randomUUID().toString
 
-    http.POSTString[HttpResponse](details.url, xml)(CustomHttpReader, newHeaderCarrier, implicitly)
+    val customHeaders = OutgoingHeadersFilter.headersFromRequest(request) ++ Seq(
+      "X-Correlation-Id"  -> correlationId,
+      "CustomProcessHost" -> "Digital"
+    )
+
+    logger.info(s"Posting NCTS message with correlation ID $correlationId to ${details.url}, ${details.routingMessage}")
+
+    http.POSTString[HttpResponse](details.url, request.body.toString, customHeaders)
   }
 }

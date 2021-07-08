@@ -16,24 +16,16 @@
 
 package models
 
-import cats.implicits._
-
-trait FailureMessage {
+sealed abstract class FailureMessage extends Product with Serializable {
   def message: String
 }
 
 final case class RejectionMessage(message: String) extends FailureMessage
 
-sealed trait ParseError extends FailureMessage
+sealed abstract class ParseError extends FailureMessage
 
-object ParseError extends ParseHandling {
-
+object ParseError {
   final case class InvalidMessageCode(message: String) extends ParseError
-  final case class PresentationEmpty(message: String)   extends ParseError
+  final case class PresentationEmpty(message: String)  extends ParseError
   final case class DepartureEmpty(message: String)     extends ParseError
-
-  def sequenceErrors[A](input: Seq[ParseHandler[A]]): ParseHandler[Seq[A]] = {
-    input.toList.sequence.map { _.toSeq }
-  }
-
 }

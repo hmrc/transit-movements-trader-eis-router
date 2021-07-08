@@ -16,50 +16,51 @@
 
 package services
 
-import cats.data.ReaderT
 import com.google.inject.Inject
-import config.AppConfig
 import connectors.MessageConnector
-import models.ParseError.{DepartureEmpty, InvalidMessageCode, PresentationEmpty}
-import models.RoutingOption.Xi
+import logging.Logging
+import models.FailureMessage
+import models.MessageType
+import models.Office
+import models.ParseError
+import models.ParseError.InvalidMessageCode
+import models.RejectionMessage
 import models.requests.ChannelRequest
-import models.{FailureMessage, MessageType, Office, ParseError, ParseHandling, PresentationOffice, RejectionMessage, RoutingOption}
-import play.api.Logger
-import play.api.mvc.RequestHeader
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.HttpResponse
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.xml.NodeSeq
 
-class RoutingService @Inject() (fsrc: FeatureSwitchRouteChecker, messageConnector: MessageConnector) extends ParseHandling {
+class RoutingService @Inject() (routeChecker: RouteChecker, messageConnector: MessageConnector) extends Logging {
 
-  val logger = Logger(this.getClass)
+  def submitMessage(request: ChannelRequest[NodeSeq], headerCarrier: HeaderCarrier)(implicit ec: ExecutionContext): Either[FailureMessage, Future[HttpResponse]] =
+    XmlParser.getValidRoot(request.body) match {
+      case None =>
+        Left(InvalidMessageCode(s"Invalid Message Type"))
 
-  def submitMessage(xml: NodeSeq)(implicit request: ChannelRequest[NodeSeq], requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Either[FailureMessage, Future[HttpResponse]] = {
-    XmlParser.getValidRoot(xml) match {
-      case None => Left(InvalidMessageCode(s"Invalid Message Type"))
-      case Some((rootXml, messageType)) =>
-        val officeEither: Either[ParseError, Office] = if(MessageType.arrivalValues.contains(messageType)) {
-          Logger.debug("Determining office of presentation ...")
-          XmlParser.officeOfPresentation(rootXml)
-        }
-        else {
-          Logger.debug("Determining office of departure ...")
-          XmlParser.officeOfDeparture(rootXml)
-        }
+      case Some(XmlParser.RootNode(messageType, rootXml)) =>
+        val parseOffice: Either[ParseError, Office] =
+          if (MessageType.arrivalValues.contains(messageType)) {
+            logger.debug("Determining office of presentation ...")
+            XmlParser.officeOfPresentation(rootXml)
+          } else {
+            logger.debug("Determining office of departure ...")
+            XmlParser.officeOfDeparture(rootXml)
+          }
 
-
-        officeEither.flatMap {
+        parseOffice.flatMap {
           office =>
             val routingOption = office.getRoutingOption
-            Logger.debug(s"Office of departure/presentation ${office} routing option ${routingOption} with channel ${request.channel}")
-            if(fsrc.canForward(routingOption, request.channel)) {
-              Right(messageConnector.post(xml.toString(), routingOption))
-            }
-            else {
-              Left(RejectionMessage(s"Routing to ${office.value.splitAt(2)._1} rejected on ${request.channel} channel"))
-            }
+
+            logger.debug(s"Office of departure/presentation $office routing option $routingOption with channel ${request.channel}")
+
+            Either.cond(
+              routeChecker.canForward(routingOption, request.channel),
+              messageConnector.post(request, routingOption, headerCarrier),
+              RejectionMessage(s"Routing to ${office.value.take(2)} rejected on ${request.channel} channel")
+            )
         }
     }
-  }
 }

@@ -14,10 +14,23 @@
  * limitations under the License.
  */
 
-package models
+package connectors
 
-trait ParseHandling {
+import play.api.mvc.RequestHeader
 
-  type ParseHandler[A] = Either[ParseError, A]
+object OutgoingHeadersFilter {
+  val CustomUpstreamHeaders = Seq(
+    "date",
+    "content-type",
+    "accept",
+    "x-message-type",
+    "x-message-sender"
+  )
 
+  def headersFromRequest(requestHeader: RequestHeader): Seq[(String, String)] = {
+    requestHeader.headers.headers.filter {
+      case (name, _) =>
+        CustomUpstreamHeaders.contains(name.toLowerCase())
+    }
+  }
 }

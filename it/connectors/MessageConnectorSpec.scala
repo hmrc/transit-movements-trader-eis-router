@@ -1,21 +1,52 @@
+/*
+ * Copyright 2021 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock._
-import config.AppConfig
+import models.ChannelType
 import models.RoutingOption.Gb
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import models.RoutingOption.Xi
+import models.requests.ChannelRequest
+import org.scalacheck.Gen
+import org.scalatest.concurrent.IntegrationPatience
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import uk.gov.hmrc.http.HeaderCarrier
 
-class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite with ScalaFutures with MockitoSugar with IntegrationPatience {
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.xml.NodeSeq
+
+class MessageConnectorSpec
+    extends AnyWordSpec
+    with Matchers
+    with WiremockSuite
+    with ScalaFutures
+    with MockitoSugar
+    with IntegrationPatience
+    with ScalaCheckDrivenPropertyChecks {
   "post" should {
 
-    "add CustomProcessHost and X-Correlation-Id headers to messages" in {
+    "add CustomProcessHost and X-Correlation-Id headers to messages for GB" in {
 
       val app = appBuilder.build()
 
@@ -23,19 +54,47 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
 
         val connector = app.injector.instanceOf[MessageConnector]
 
-        implicit val hc = HeaderCarrier()
-        implicit val requestHeader = FakeRequest()
+        val hc            = HeaderCarrier()
+        val requestHeader = FakeRequest().withBody(<document></document>)
+        val request       = ChannelRequest[NodeSeq](requestHeader, ChannelType.Api)
 
         server.stubFor(
           post(
             urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
           )
-          .withHeader("X-Correlation-Id", matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"))
-          .withHeader("CustomProcessHost", equalTo("Digital"))
-          .willReturn(aResponse().withStatus(ACCEPTED))
+            .withHeader("X-Correlation-Id", matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"))
+            .withHeader("CustomProcessHost", equalTo("Digital"))
+            .willReturn(aResponse().withStatus(ACCEPTED))
         )
 
-        val result = connector.post("<document></document>", Gb).futureValue
+        val result = connector.post(request, Gb, hc).futureValue
+
+        result.status mustEqual ACCEPTED
+      }
+    }
+
+    "add CustomProcessHost and X-Correlation-Id headers to messages for XI" in {
+
+      val app = appBuilder.build()
+
+      running(app) {
+
+        val connector = app.injector.instanceOf[MessageConnector]
+
+        val hc            = HeaderCarrier()
+        val requestHeader = FakeRequest().withBody(<document></document>)
+        val request       = ChannelRequest[NodeSeq](requestHeader, ChannelType.Api)
+
+        server.stubFor(
+          post(
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/ni")
+          )
+            .withHeader("X-Correlation-Id", matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"))
+            .withHeader("CustomProcessHost", equalTo("Digital"))
+            .willReturn(aResponse().withStatus(ACCEPTED))
+        )
+
+        val result = connector.post(request, Xi, hc).futureValue
 
         result.status mustEqual ACCEPTED
       }
@@ -46,7 +105,6 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
 
       running(app) {
         val connector = app.injector.instanceOf[MessageConnector]
-        val config = app.injector.instanceOf[AppConfig]
 
         server.stubFor(
           post(
@@ -54,126 +112,47 @@ class MessageConnectorSpec extends AnyWordSpec with Matchers with WiremockSuite 
           ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB")).willReturn(aResponse().withStatus(ACCEPTED))
         )
 
-        implicit val hc = HeaderCarrier()
-        implicit val requestHeader = FakeRequest()
+        val hc            = HeaderCarrier()
+        val requestHeader = FakeRequest().withBody(<document></document>)
+        val request       = ChannelRequest[NodeSeq](requestHeader, ChannelType.Api)
 
-        val result = connector.post("<document></document>", Gb).futureValue
+        val result = connector.post(request, Gb, hc).futureValue
 
         result.status mustEqual ACCEPTED
       }
     }
 
-    "return BAD_GATEWAY when the server returns INTERNAL_SERVER_ERROR" in {
+    val errorCodes = Gen.oneOf(
+      Seq(
+        BAD_REQUEST,
+        FORBIDDEN,
+        INTERNAL_SERVER_ERROR,
+        BAD_GATEWAY,
+        GATEWAY_TIMEOUT
+      )
+    )
 
-      val app = appBuilder.build()
+    "pass through error status codes" in forAll(errorCodes) {
+      statusCode =>
+        val app = appBuilder.build()
 
-      running(app) {
-        val connector = app.injector.instanceOf[MessageConnector]
-        val config = app.injector.instanceOf[AppConfig]
+        running(app) {
+          val connector = app.injector.instanceOf[MessageConnector]
 
-        server.stubFor(
-          post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          ).willReturn(serverError())
-        )
+          server.stubFor(
+            post(
+              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
+            ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB")).willReturn(aResponse().withStatus(statusCode))
+          )
 
-        implicit val hc = HeaderCarrier()
-        implicit val requestHeader = FakeRequest()
+          val hc            = HeaderCarrier()
+          val requestHeader = FakeRequest().withBody(<document></document>)
+          val request       = ChannelRequest[NodeSeq](requestHeader, ChannelType.Api)
 
-        val result = connector.post("<document></document>", Gb).futureValue
+          val result = connector.post(request, Gb, hc).futureValue
 
-        result.status mustEqual BAD_GATEWAY
-      }
-    }
-
-    "return BAD_GATEWAY when the server returns GATEWAY_TIMEOUT" in {
-
-      val app = appBuilder.build()
-
-      running(app) {
-        val connector = app.injector.instanceOf[MessageConnector]
-        val config = app.injector.instanceOf[AppConfig]
-
-        server.stubFor(
-          post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          ).willReturn(aResponse().withStatus(GATEWAY_TIMEOUT))
-        )
-
-        implicit val hc = HeaderCarrier()
-        implicit val requestHeader = FakeRequest()
-
-        val result = connector.post("<document></document>", Gb).futureValue
-
-        result.status mustEqual BAD_GATEWAY
-      }
-    }
-
-    "return BAD_REQUEST when post returns BAD_REQUEST" in {
-
-      val app = appBuilder.build()
-
-      running(app) {
-        val connector = app.injector.instanceOf[MessageConnector]
-        val config = app.injector.instanceOf[AppConfig]
-
-        server.stubFor(
-          post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB")).willReturn(aResponse().withStatus(BAD_REQUEST))
-        )
-
-        implicit val hc = HeaderCarrier()
-        implicit val requestHeader = FakeRequest()
-
-        val result = connector.post("<document></document>", Gb).futureValue
-
-        result.status mustEqual BAD_REQUEST
-      }
-    }
-
-    "return INTERNAL_SERVER_ERROR when post returns FORBIDDEN" in {
-      val app = appBuilder.build()
-
-      running(app) {
-        val connector = app.injector.instanceOf[MessageConnector]
-        val config = app.injector.instanceOf[AppConfig]
-
-        server.stubFor(
-          post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB")).willReturn(aResponse().withStatus(FORBIDDEN))
-        )
-
-        implicit val hc = HeaderCarrier()
-        implicit val requestHeader = FakeRequest()
-
-        val result = connector.post("<document></document>", Gb).futureValue
-
-        result.status mustEqual INTERNAL_SERVER_ERROR
-      }
-    }
-
-    "return BAD_GATEWAY when post returns BAD_GATEWAY" in {
-      val app = appBuilder.build()
-
-      running(app) {
-        val connector = app.injector.instanceOf[MessageConnector]
-        val config = app.injector.instanceOf[AppConfig]
-
-        server.stubFor(
-          post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB")).willReturn(aResponse().withStatus(BAD_GATEWAY))
-        )
-
-        implicit val hc = HeaderCarrier()
-        implicit val requestHeader = FakeRequest()
-
-        val result = connector.post("<document></document>", Gb).futureValue
-
-        result.status mustEqual BAD_GATEWAY
-      }
+          result.status mustEqual statusCode
+        }
     }
   }
 

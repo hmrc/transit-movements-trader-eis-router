@@ -16,47 +16,70 @@
 
 package services
 
-import org.mockito.ArgumentMatchers.{any, eq => eqTo}
-import org.mockito.Mockito.when
-import org.mockito.Mockito.verify
 import connectors.MessageConnector
 import controllers.routes
-import models.{ChannelType, FailureMessage, RoutingOption}
+import models.ChannelType
 import models.ChannelType.Api
-import models.ParseError.{DepartureEmpty, InvalidMessageCode, PresentationEmpty}
-import models.RoutingOption.{Gb, Xi}
+import models.FailureMessage
+import models.ParseError.DepartureEmpty
+import models.ParseError.InvalidMessageCode
+import models.ParseError.PresentationEmpty
+import models.RoutingOption
+import models.RoutingOption.Gb
+import models.RoutingOption.Xi
 import models.requests.ChannelRequest
+import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.{eq => eqTo}
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.when
 import org.scalacheck.Gen
-import org.scalatest.{BeforeAndAfterEach, OptionValues}
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.OptionValues
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
-import play.api.http.{HeaderNames, MimeTypes}
-import play.api.test.{FakeHeaders, FakeRequest}
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import play.api.http.HeaderNames
+import play.api.http.MimeTypes
+import play.api.test.FakeHeaders
+import play.api.test.FakeRequest
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.HttpResponse
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.xml.NodeSeq
 
-class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSuite with OptionValues with ScalaFutures with MockitoSugar with BeforeAndAfterEach with ScalaCheckDrivenPropertyChecks {
+class RoutingServiceSpec
+    extends AnyFreeSpec
+    with Matchers
+    with GuiceOneAppPerSuite
+    with OptionValues
+    with ScalaFutures
+    with MockitoSugar
+    with BeforeAndAfterEach
+    with ScalaCheckDrivenPropertyChecks {
 
-  private def service(fsrc: FeatureSwitchRouteChecker = mock[FeatureSwitchRouteChecker], messageConnector: MessageConnector = mock[MessageConnector]) = new RoutingService(fsrc, messageConnector)
+  private def service(routeChecker: RouteChecker = mock[RouteChecker], messageConnector: MessageConnector = mock[MessageConnector]) =
+    new RoutingService(routeChecker, messageConnector)
 
-  private def fakeRequest(channel: ChannelType): ChannelRequest[NodeSeq] =
+  private def fakeRequest(channel: ChannelType, body: NodeSeq): ChannelRequest[NodeSeq] =
     ChannelRequest(
       FakeRequest(
         method = "POST",
         uri = routes.MessagesController.post().url,
         headers = FakeHeaders(Seq(HeaderNames.CONTENT_TYPE -> MimeTypes.XML)),
-        body = NodeSeq.Empty), channel)
+        body = body
+      ),
+      channel
+    )
 
-  implicit val hc = HeaderCarrier()
+  val hc = HeaderCarrier()
 
   val channelGen = Gen.oneOf(ChannelType.values)
-  val routeGen = Gen.oneOf(RoutingOption.values)
+  val routeGen   = Gen.oneOf(RoutingOption.values)
 
   "submitMessage" - {
 
@@ -64,9 +87,10 @@ class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSu
       val badXML = <TransitWrapper>
         <ABCDE></ABCDE>
       </TransitWrapper>
-      implicit val request = fakeRequest(Api)
 
-      val result = service().submitMessage(badXML)
+      val request = fakeRequest(Api, badXML)
+
+      val result = service().submitMessage(request, hc)
 
       result mustBe a[Left[InvalidMessageCode, _]]
     }
@@ -75,9 +99,10 @@ class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSu
       val input = <TransitWrapper>
         <CC928A></CC928A>
       </TransitWrapper>
-      implicit val request = fakeRequest(Api)
 
-      val result = service().submitMessage(input)
+      val request = fakeRequest(Api, input)
+
+      val result = service().submitMessage(request, hc)
 
       result mustBe a[Left[DepartureEmpty, _]]
     }
@@ -86,9 +111,10 @@ class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSu
       val input = <TransitWrapper>
         <CC008A></CC008A>
       </TransitWrapper>
-      implicit val request = fakeRequest(Api)
 
-      val result = service().submitMessage(input)
+      val request = fakeRequest(Api, input)
+
+      val result = service().submitMessage(request, hc)
 
       result mustBe a[Left[PresentationEmpty, _]]
     }
@@ -104,17 +130,17 @@ class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSu
 
       forAll(channelGen) {
         channel =>
-          implicit val request = fakeRequest(channel)
+          val request = fakeRequest(channel, input)
 
           val mc = mock[MessageConnector]
-          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+          when(mc.post(any(), any(), any())(any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-          val fsrc = mock[FeatureSwitchRouteChecker]
+          val fsrc = mock[RouteChecker]
           when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(true)
 
-          service(fsrc, mc).submitMessage(input)
+          service(fsrc, mc).submitMessage(request, hc)
 
-          verify(mc).post(any(), eqTo(Xi))(any(), any())
+          verify(mc).post(any(), eqTo(Xi), any())(any())
       }
     }
 
@@ -129,15 +155,15 @@ class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSu
 
       forAll(channelGen) {
         channel =>
-          implicit val request = fakeRequest(channel)
+          val request = fakeRequest(channel, input)
 
           val mc = mock[MessageConnector]
-          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+          when(mc.post(any(), any(), any())(any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-          val fsrc = mock[FeatureSwitchRouteChecker]
+          val fsrc = mock[RouteChecker]
           when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(false)
 
-          val result = service(fsrc, mc).submitMessage(input)
+          val result = service(fsrc, mc).submitMessage(request, hc)
 
           result mustBe a[Left[FailureMessage, _]]
       }
@@ -154,17 +180,17 @@ class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSu
 
       forAll(channelGen) {
         channel =>
-          implicit val request = fakeRequest(channel)
+          val request = fakeRequest(channel, input)
 
           val mc = mock[MessageConnector]
-          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+          when(mc.post(any(), any(), any())(any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-          val fsrc = mock[FeatureSwitchRouteChecker]
+          val fsrc = mock[RouteChecker]
           when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
 
-          service(fsrc, mc).submitMessage(input)
+          service(fsrc, mc).submitMessage(request, hc)
 
-          verify(mc).post(any(), eqTo(Gb))(any(), any())
+          verify(mc).post(any(), eqTo(Gb), any())(any())
       }
     }
 
@@ -179,15 +205,15 @@ class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSu
 
       forAll(channelGen) {
         channel =>
-          implicit val request = fakeRequest(channel)
+          val request = fakeRequest(channel, input)
 
           val mc = mock[MessageConnector]
-          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+          when(mc.post(any(), any(), any())(any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-          val fsrc = mock[FeatureSwitchRouteChecker]
+          val fsrc = mock[RouteChecker]
           when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(false)
 
-          val result = service(fsrc, mc).submitMessage(input)
+          val result = service(fsrc, mc).submitMessage(request, hc)
 
           result mustBe a[Left[FailureMessage, _]]
       }
@@ -204,17 +230,17 @@ class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSu
 
       forAll(channelGen) {
         channel =>
-          implicit val request = fakeRequest(channel)
+          val request = fakeRequest(channel, input)
 
           val mc = mock[MessageConnector]
-          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+          when(mc.post(any(), any(), any())(any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-          val fsrc = mock[FeatureSwitchRouteChecker]
+          val fsrc = mock[RouteChecker]
           when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(true)
 
-          service(fsrc, mc).submitMessage(input)
+          service(fsrc, mc).submitMessage(request, hc)
 
-          verify(mc).post(any(), eqTo(Xi))(any(), any())
+          verify(mc).post(any(), eqTo(Xi), any())(any())
       }
     }
 
@@ -229,15 +255,15 @@ class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSu
 
       forAll(channelGen) {
         channel =>
-          implicit val request = fakeRequest(channel)
+          val request = fakeRequest(channel, input)
 
           val mc = mock[MessageConnector]
-          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+          when(mc.post(any(), any(), any())(any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-          val fsrc = mock[FeatureSwitchRouteChecker]
+          val fsrc = mock[RouteChecker]
           when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(false)
 
-          val result = service(fsrc, mc).submitMessage(input)
+          val result = service(fsrc, mc).submitMessage(request, hc)
 
           result mustBe a[Left[FailureMessage, _]]
       }
@@ -254,17 +280,17 @@ class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSu
 
       forAll(channelGen) {
         channel =>
-          implicit val request = fakeRequest(channel)
+          val request = fakeRequest(channel, input)
 
           val mc = mock[MessageConnector]
-          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+          when(mc.post(any(), any(), any())(any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-          val fsrc = mock[FeatureSwitchRouteChecker]
+          val fsrc = mock[RouteChecker]
           when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
 
-          service(fsrc, mc).submitMessage(input)
+          service(fsrc, mc).submitMessage(request, hc)
 
-          verify(mc).post(any(), eqTo(Gb))(any(), any())
+          verify(mc).post(any(), eqTo(Gb), any())(any())
       }
     }
 
@@ -279,15 +305,15 @@ class RoutingServiceSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSu
 
       forAll(channelGen) {
         channel =>
-          implicit val request = fakeRequest(channel)
+          val request = fakeRequest(channel, input)
 
           val mc = mock[MessageConnector]
-          when(mc.post(any(), any())(any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+          when(mc.post(any(), any(), any())(any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-          val fsrc = mock[FeatureSwitchRouteChecker]
+          val fsrc = mock[RouteChecker]
           when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(false)
 
-          val result = service(fsrc, mc).submitMessage(input)
+          val result = service(fsrc, mc).submitMessage(request, hc)
 
           result mustBe a[Left[FailureMessage, _]]
       }

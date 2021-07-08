@@ -16,20 +16,11 @@
 
 package models
 
-import com.typesafe.config.Config
-import config.AppConfig
-import play.api.{ConfigLoader, Configuration}
+sealed abstract class RoutingOption(val prefix: String) extends Product with Serializable
 
-sealed trait RoutingOption
-
-object RoutingOption extends Enumerable.Implicits {
-  case object Gb extends RoutingOption
-  case object Xi extends RoutingOption
-
+object RoutingOption {
+  case object Gb extends RoutingOption("GB")
+  case object Xi extends RoutingOption("XI")
   val values: Seq[RoutingOption] = Seq(Gb, Xi)
-
-  implicit val enumerable: Enumerable[RoutingOption] =
-    Enumerable(values.map(v => v.toString -> v): _*)
-
 }
 

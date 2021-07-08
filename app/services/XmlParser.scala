@@ -16,34 +16,35 @@
 
 package services
 
-import cats.data.ReaderT
-import models.ParseError.{DepartureEmpty, PresentationEmpty}
-import models.{DepartureOffice, MessageType, ParseHandling, PresentationOffice}
+import models.DepartureOffice
+import models.MessageType
+import models.ParseError
+import models.ParseError.DepartureEmpty
+import models.ParseError.PresentationEmpty
+import models.PresentationOffice
 
 import scala.xml.NodeSeq
 
-object XmlParser extends ParseHandling {
+object XmlParser {
+  type ParseHandler[A] = Either[ParseError, A]
 
-  def getValidRoot(xml: NodeSeq): Option[(NodeSeq, MessageType)] = {
-    MessageType.validMessages.map { m =>
-      val result = (xml \\ m.rootNode)
-      (result, m)
-    }.filterNot(pair => pair._1 == NodeSeq.Empty).headOption
-  }
+  case class RootNode(messageType: MessageType, message: NodeSeq)
 
-  val officeOfDeparture: ReaderT[ParseHandler, NodeSeq, DepartureOffice] =
-    ReaderT[ParseHandler, NodeSeq, DepartureOffice](xml => {
-      (xml \\ "CUSOFFDEPEPT" \ "RefNumEPT1").text match {
-        case departure if departure.isEmpty => Left(DepartureEmpty("Departure Empty"))
-        case departure => Right(DepartureOffice(departure))
-      }
-    })
+  def getValidRoot(xml: NodeSeq): Option[RootNode] =
+    MessageType.validMessages.collectFirst {
+      case messageType if (xml \\ messageType.rootNode).nonEmpty =>
+        RootNode(messageType, xml \\ messageType.rootNode)
+    }
 
-  val officeOfPresentation: ReaderT[ParseHandler, NodeSeq, PresentationOffice] =
-    ReaderT[ParseHandler, NodeSeq, PresentationOffice](xml => {
-      (xml \ "CUSOFFPREOFFRES" \ "RefNumRES1").text match {
-        case presentation if presentation.isEmpty => Left(PresentationEmpty("Presentation Empty"))
-        case presentation => Right(PresentationOffice(presentation))
-      }
-    })
+  def officeOfDeparture(xml: NodeSeq): ParseHandler[DepartureOffice] =
+    (xml \\ "CUSOFFDEPEPT" \ "RefNumEPT1").text match {
+      case departure if departure.isEmpty => Left(DepartureEmpty("Departure Empty"))
+      case departure                      => Right(DepartureOffice(departure))
+    }
+
+  def officeOfPresentation(xml: NodeSeq): ParseHandler[PresentationOffice] =
+    (xml \ "CUSOFFPREOFFRES" \ "RefNumRES1").text match {
+      case presentation if presentation.isEmpty => Left(PresentationEmpty("Presentation Empty"))
+      case presentation                         => Right(PresentationOffice(presentation))
+    }
 }

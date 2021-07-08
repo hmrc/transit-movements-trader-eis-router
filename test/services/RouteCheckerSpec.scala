@@ -16,16 +16,18 @@
 
 package services
 
-import models.ChannelType.{Api, Web}
-import models.RoutingOption.{Gb, Xi}
+import models.ChannelType.Api
+import models.ChannelType.Web
+import models.RoutingOption.Gb
+import models.RoutingOption.Xi
+import org.mockito.Mockito.when
 import org.scalacheck.Gen
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
-import org.mockito.Mockito.when
 
-class FeatureSwitchRouteCheckerSpec extends AnyFreeSpec with MockitoSugar with Matchers with ScalaCheckDrivenPropertyChecks {
+class RouteCheckerSpec extends AnyFreeSpec with MockitoSugar with Matchers with ScalaCheckDrivenPropertyChecks {
 
   val routingOptionGen = Gen.oneOf[Boolean](true, false)
 
@@ -37,7 +39,7 @@ class FeatureSwitchRouteCheckerSpec extends AnyFreeSpec with MockitoSugar with M
           val mockConfig = mock[RoutingConfig]
           when(mockConfig.webXi).thenReturn(opt)
 
-          new FeatureSwitchRouteChecker(mockConfig).canForward(Xi, Web) mustBe opt
+          new RouteChecker(mockConfig).canForward(Xi, Web) mustBe opt
         }
       }
     }
@@ -48,7 +50,7 @@ class FeatureSwitchRouteCheckerSpec extends AnyFreeSpec with MockitoSugar with M
           val mockConfig = mock[RoutingConfig]
           when(mockConfig.apiXi).thenReturn(opt)
 
-          new FeatureSwitchRouteChecker(mockConfig).canForward(Xi, Api) mustBe opt
+          new RouteChecker(mockConfig).canForward(Xi, Api) mustBe opt
         }
       }
     }
@@ -59,7 +61,7 @@ class FeatureSwitchRouteCheckerSpec extends AnyFreeSpec with MockitoSugar with M
           val mockConfig = mock[RoutingConfig]
           when(mockConfig.webGb).thenReturn(opt)
 
-          new FeatureSwitchRouteChecker(mockConfig).canForward(Gb, Web) mustBe opt
+          new RouteChecker(mockConfig).canForward(Gb, Web) mustBe opt
         }
       }
     }
@@ -70,7 +72,7 @@ class FeatureSwitchRouteCheckerSpec extends AnyFreeSpec with MockitoSugar with M
           val mockConfig = mock[RoutingConfig]
           when(mockConfig.apiGb).thenReturn(opt)
 
-          new FeatureSwitchRouteChecker(mockConfig).canForward(Gb, Api) mustBe opt
+          new RouteChecker(mockConfig).canForward(Gb, Api) mustBe opt
         }
       }
     }
