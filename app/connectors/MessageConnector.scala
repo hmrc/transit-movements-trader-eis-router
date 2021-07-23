@@ -28,12 +28,11 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpResponse
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.logging.Authorization
-import play.api.Logger
-
 
 import scala.concurrent.{ExecutionContext, Future}
+import logging.Logging
 
-class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit ec: ExecutionContext) {
+class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit ec: ExecutionContext) extends Logging {
 
   private def extraHeaders: Seq[(String, String)] =
     Seq(
@@ -44,7 +43,6 @@ class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit e
   private case class EisDetails(url: String, token: String, routingMessage: String)
 
   def post(xml: String, rOption: RoutingOption)(implicit requestHeader: RequestHeader, headerCarrier: HeaderCarrier): Future[HttpResponse] = {
-
     val details = (rOption match {
       case Xi => EisDetails(config.eisniUrl, config.eisniBearerToken, "routing to NI")
       case Gb => EisDetails(config.eisgbUrl, config.eisgbBearerToken, "routing to GB")
@@ -55,7 +53,24 @@ class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit e
       .copy(authorization = Some(Authorization(s"Bearer ${details.token}")))
       .withExtraHeaders(customHeaders: _*)
 
-    Logger.info(s"Posting NCTS message to ${details.url}, ${details.routingMessage}")
+
+    def getHeader(header: String): String = 
+      newHeaderCarrier
+        .headers
+        .find(_._1.toUpperCase == header.toUpperCase)
+        .map(_._2)
+        .getOrElse("undefined")
+
+    val logMessage =
+          s"""|Posting NCTS message, ${details.routingMessage}
+              |X-Correlation-ID: ${getHeader("X-Correlation-Id")}
+              |X-Request-ID: ${getHeader("X-Request-Id")}
+              |X-Message-Type: ${getHeader("X-Message-Type")}
+              |X-Message-Sender: ${getHeader("X-Message-Sender")}
+              |Content-Type:  ${getHeader("Content-Type")}
+              """.stripMargin
+
+    logger.info(logMessage)           
 
     http.POSTString[HttpResponse](details.url, xml)(CustomHttpReader, newHeaderCarrier, implicitly)
   }

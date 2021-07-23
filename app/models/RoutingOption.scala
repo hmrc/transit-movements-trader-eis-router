@@ -16,10 +16,6 @@
 
 package models
 
-import com.typesafe.config.Config
-import config.AppConfig
-import play.api.{ConfigLoader, Configuration}
-
 sealed trait RoutingOption
 
 object RoutingOption extends Enumerable.Implicits {
