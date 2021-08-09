@@ -61,17 +61,23 @@ class MessageConnector @Inject()(config: AppConfig, http: HttpClient)(implicit e
         .map(_._2)
         .getOrElse("undefined")
 
-    val logMessage =
+
+    http.POSTString[HttpResponse](details.url, xml)(CustomHttpReader, newHeaderCarrier, implicitly) map {
+      case result =>
+
+        val logMessage =
           s"""|Posting NCTS message, ${details.routingMessage}
               |X-Correlation-ID: ${getHeader("X-Correlation-Id")}
               |X-Request-ID: ${getHeader("X-Request-Id")}
               |X-Message-Type: ${getHeader("X-Message-Type")}
               |X-Message-Sender: ${getHeader("X-Message-Sender")}
-              |Content-Type:  ${getHeader("Content-Type")}
+              |Response status: ${result.status}
               """.stripMargin
 
-    logger.info(logMessage)           
+        if (result.status < 500 || result.status != 403) logger.info(logMessage)           
+        else logger.warn(logMessage)
 
-    http.POSTString[HttpResponse](details.url, xml)(CustomHttpReader, newHeaderCarrier, implicitly)
+        result
+    }
   }
 }
