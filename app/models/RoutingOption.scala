@@ -16,16 +16,10 @@
 
 package models
 
-sealed trait RoutingOption
+sealed abstract class RoutingOption(val prefix: String) extends Product with Serializable
 
-object RoutingOption extends Enumerable.Implicits {
-  case object Gb extends RoutingOption
-  case object Xi extends RoutingOption
-
+object RoutingOption {
+  case object Gb extends RoutingOption("GB")
+  case object Xi extends RoutingOption("XI")
   val values: Seq[RoutingOption] = Seq(Gb, Xi)
-
-  implicit val enumerable: Enumerable[RoutingOption] =
-    Enumerable(values.map(v => v.toString -> v): _*)
-
 }
-

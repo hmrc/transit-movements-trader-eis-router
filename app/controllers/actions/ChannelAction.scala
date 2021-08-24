@@ -18,27 +18,34 @@ package controllers.actions
 
 import com.google.inject.Inject
 import models.ChannelType
-import models.ChannelType.{Api, Web}
+import models.ChannelType.Api
+import models.ChannelType.Web
 import models.requests.ChannelRequest
-import play.api.mvc.{ActionRefiner, Request, Result}
-
-import scala.concurrent.{ExecutionContext, Future}
+import play.api.mvc.ActionRefiner
+import play.api.mvc.Request
+import play.api.mvc.Result
 import play.api.mvc.Results.BadRequest
 
-class ChannelAction @Inject()()(
-  implicit val executionContext: ExecutionContext)
-  extends ActionRefiner[Request, ChannelRequest] {
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 
-  override protected def refine[A](request: Request[A]): Future[Either[Result, ChannelRequest[A]]] = {
+class ChannelAction @Inject() ()(implicit val executionContext: ExecutionContext)
+    extends ActionRefiner[Request, ChannelRequest] {
+
+  override protected def refine[A](
+    request: Request[A]
+  ): Future[Either[Result, ChannelRequest[A]]] = {
     val channelOpt: Option[ChannelType] = request.headers.get("channel") match {
-      case Some(channel) if channel.equals(Api.toString) => Some(Api)
-      case Some(channel) if channel.equals(Web.toString) => Some(Web)
-      case _ => None
+      case Some(channel) if channel.equals(Api.name) => Some(Api)
+      case Some(channel) if channel.equals(Web.name) => Some(Web)
+      case _                                         => None
     }
 
     channelOpt match {
       case None =>
-        Future.successful(Left(BadRequest("Missing channel header or incorrect value specified in channel header")))
+        Future.successful(
+          Left(BadRequest("Missing channel header or incorrect value specified in channel header"))
+        )
       case Some(channel) =>
         Future.successful(Right(ChannelRequest(request, channel)))
     }

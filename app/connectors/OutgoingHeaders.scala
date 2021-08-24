@@ -14,10 +14,16 @@
  * limitations under the License.
  */
 
-package models
+package connectors
 
-trait ParseHandling {
+import play.api.http.HeaderNames
 
-  type ParseHandler[A] = Either[ParseError, A]
-
+object OutgoingHeaders {
+  val headers = Seq(
+    HeaderNames.DATE,
+    HeaderNames.CONTENT_TYPE,
+    HeaderNames.ACCEPT,
+    "X-Message-Type",
+    "X-Message-Sender"
+  )
 }

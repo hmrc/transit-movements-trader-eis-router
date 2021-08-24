@@ -17,17 +17,20 @@
 package controllers.actions
 
 import controllers.routes
-import models.ChannelType.{Api, Web}
+import models.ChannelType.Api
+import models.ChannelType.Web
 import models.requests.ChannelRequest
 import org.scalatest.EitherValues
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
-import play.api.http.Status
 import play.api.http.Status.BAD_REQUEST
-import play.api.mvc.{Headers, Request, Result}
+import play.api.mvc.Headers
+import play.api.mvc.Request
+import play.api.mvc.Result
 import play.api.test.FakeRequest
-import play.api.test.Helpers.{defaultAwaitTimeout, status}
+import play.api.test.Helpers.defaultAwaitTimeout
+import play.api.test.Helpers.status
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -42,38 +45,56 @@ class ChannelActionSpec extends AnyFreeSpec with Matchers with ScalaFutures with
 
   "ChannelAction" - {
     "returns BadRequest if the channel header is missing" in {
-      val futureResult = new Harness().call(FakeRequest("POST", routes.MessagesController.post().url))
+      val futureResult =
+        new Harness().call(FakeRequest("POST", routes.MessagesController.post().url))
 
-      whenReady(futureResult) {
-        result =>
+      whenReady(futureResult) { result =>
         status(Future.successful(result.left.get)) mustBe BAD_REQUEST
       }
     }
 
     "returns BadRequest if the channel header is malformed" in {
-      val futureResult = new Harness().call(FakeRequest("POST", routes.MessagesController.post().url, Headers("channel" -> "abc"), NodeSeq.Empty))
+      val futureResult = new Harness().call(
+        FakeRequest(
+          "POST",
+          routes.MessagesController.post().url,
+          Headers("channel" -> "abc"),
+          NodeSeq.Empty
+        )
+      )
 
-      whenReady(futureResult) {
-        result =>
-          status(Future.successful(result.left.get)) mustBe BAD_REQUEST
+      whenReady(futureResult) { result =>
+        status(Future.successful(result.left.get)) mustBe BAD_REQUEST
       }
     }
 
     "returns ChannelRequest if channel header present (web)" in {
-      val futureResult = new Harness().call(FakeRequest("POST", routes.MessagesController.post().url, Headers("channel" -> Web.toString), NodeSeq.Empty))
+      val futureResult = new Harness().call(
+        FakeRequest(
+          "POST",
+          routes.MessagesController.post().url,
+          Headers("channel" -> Web.name),
+          NodeSeq.Empty
+        )
+      )
 
-      whenReady(futureResult) {
-        result =>
-          result.right.get.channel mustBe Web
+      whenReady(futureResult) { result =>
+        result.right.get.channel mustBe Web
       }
     }
 
     "returns ChannelRequest if channel header present (api)" in {
-      val futureResult = new Harness().call(FakeRequest("POST", routes.MessagesController.post().url, Headers("channel" -> Api.toString), NodeSeq.Empty))
+      val futureResult = new Harness().call(
+        FakeRequest(
+          "POST",
+          routes.MessagesController.post().url,
+          Headers("channel" -> Api.name),
+          NodeSeq.Empty
+        )
+      )
 
-      whenReady(futureResult) {
-        result =>
-          result.right.get.channel mustBe Api
+      whenReady(futureResult) { result =>
+        result.right.get.channel mustBe Api
       }
     }
   }

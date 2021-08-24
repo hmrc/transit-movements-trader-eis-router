@@ -19,4 +19,5 @@ package models.requests
 import models.ChannelType
 import play.api.mvc.{Request, WrappedRequest}
 
-case class ChannelRequest[A](request: Request[A], channel: ChannelType) extends WrappedRequest[A](request)
+case class ChannelRequest[A](request: Request[A], channel: ChannelType)
+    extends WrappedRequest[A](request)

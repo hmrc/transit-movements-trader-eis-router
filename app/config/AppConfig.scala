@@ -16,14 +16,14 @@
 
 package config
 
-import javax.inject.{Inject, Singleton}
-import models.RoutingOption
-import models.RoutingOption.{Gb, Xi}
-import play.api.{ConfigLoader, Configuration}
+import play.api.Configuration
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
+import javax.inject.Inject
+import javax.inject.Singleton
+
 @Singleton
-class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig) {
+class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig) {
 
   val authBaseUrl: String = servicesConfig.baseUrl("auth")
 
@@ -31,9 +31,11 @@ class AppConfig @Inject()(config: Configuration, servicesConfig: ServicesConfig)
   val graphiteHost: String     = config.get[String]("microservice.metrics.graphite.host")
 
   private val eisBaseUrl: String = servicesConfig.baseUrl("eis")
-  val eisniUrl: String             = eisBaseUrl ++ config.get[String]("microservice.services.eis.ni.uri")
-  val eisniBearerToken: String     = config.get[String]("microservice.services.eis.ni.headers.bearerToken")
-  val eisgbUrl: String             = eisBaseUrl ++ config.get[String]("microservice.services.eis.gb.uri")
-  val eisgbBearerToken: String     = config.get[String]("microservice.services.eis.gb.headers.bearerToken")
+  val eisniUrl: String           = eisBaseUrl ++ config.get[String]("microservice.services.eis.ni.uri")
+  val eisniBearerToken: String =
+    config.get[String]("microservice.services.eis.ni.headers.bearerToken")
+  val eisgbUrl: String = eisBaseUrl ++ config.get[String]("microservice.services.eis.gb.uri")
+  val eisgbBearerToken: String =
+    config.get[String]("microservice.services.eis.gb.headers.bearerToken")
 
 }

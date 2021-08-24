@@ -14,16 +14,21 @@
  * limitations under the License.
  */
 
-package config
+package services
 
-import com.google.inject.AbstractModule
-import services.RoutingConfig
+import com.google.inject.Inject
+import models.ChannelType.{Api, Web}
+import models.RoutingOption.{Gb, Xi}
+import models.{ChannelType, RoutingOption}
 
-class Module extends AbstractModule {
+class RouteChecker @Inject() (routingConfig: RoutingConfig) {
 
-  override def configure(): Unit = {
-    bind(classOf[AppConfig]).asEagerSingleton()
-    bind(classOf[RoutingConfig]).asEagerSingleton()
+  def canForward(routingOption: RoutingOption, channelType: ChannelType): Boolean = {
+    (channelType, routingOption) match {
+      case (Api, Xi) => routingConfig.apiXi
+      case (Web, Xi) => routingConfig.webXi
+      case (Api, Gb) => routingConfig.apiGb
+      case (Web, Gb) => routingConfig.webGb
+    }
   }
-
 }
