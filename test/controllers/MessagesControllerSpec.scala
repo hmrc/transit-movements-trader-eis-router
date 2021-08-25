@@ -129,7 +129,7 @@ class MessagesControllerSpec
       val result = controller(rs).post()(fakeValidXmlRequest)
       status(result) shouldBe ACCEPTED
     }
-    "should return 500 BAD GATEWAY Error when routing service receives 500" in {
+    "should return 502 Bad Gateway when routing service receives 500" in {
       val rs = mock[RoutingService]
       when(rs.submitMessage(any(), any(), any()))
         .thenReturn(Right(Future.successful(HttpResponse(INTERNAL_SERVER_ERROR, ""))))
@@ -137,13 +137,13 @@ class MessagesControllerSpec
       val result = controller(rs).post()(fakeValidXmlRequest)
       status(result) shouldBe BAD_GATEWAY
     }
-    "should return 403 Forbidden when routing service returns 403" in {
+    "should return 500 Internal Server Error when routing service returns 403" in {
       val rs = mock[RoutingService]
       when(rs.submitMessage(any(), any(), any()))
         .thenReturn(Right(Future.successful(HttpResponse(FORBIDDEN, ""))))
 
       val result = controller(rs).post()(fakeValidXmlRequest)
-      status(result) shouldBe FORBIDDEN
+      status(result) shouldBe INTERNAL_SERVER_ERROR
     }
     "should return 400 Bad Request when parse error returned" in {
       val rs = mock[RoutingService]
