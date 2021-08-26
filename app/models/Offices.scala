@@ -18,13 +18,11 @@ package models
 
 import models.RoutingOption.{Gb, Xi}
 
-trait Office {
+sealed abstract class Office extends Product with Serializable {
   def value: String
-  def getRoutingOption: RoutingOption = value match {
-    case v if v.startsWith(Xi.toString.toUpperCase()) => Xi
-    case _ => Gb
-  }
+  def getRoutingOption: RoutingOption =
+    if (value.startsWith(Xi.prefix)) Xi else Gb
 }
 
-final case class DepartureOffice(value: String) extends Office
+final case class DepartureOffice(value: String)    extends Office
 final case class PresentationOffice(value: String) extends Office

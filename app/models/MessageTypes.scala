@@ -16,21 +16,15 @@
 
 package models
 
-trait MessageType extends IeMetadata {
-  def code: String
-  def rootNode: String
-}
+sealed abstract class MessageType(val code: String, val rootNode: String)
+    extends Product
+    with Serializable
 
-sealed trait Directable extends MessageType
-trait ArrivalMessage extends Directable
-trait DepartureMessage extends Directable
-
-object MessageType extends Enumerable.Implicits {
-
-  case object ArrivalNotification             extends IeMetadata("IE007", "CC007A") with Directable
-  case object UnloadingRemarks                extends IeMetadata("IE044", "CC044A") with Directable
-  case object DepartureDeclaration            extends IeMetadata("IE015", "CC015B") with Directable
-  case object DeclarationCancellationRequest  extends IeMetadata("IE014", "CC014A") with Directable
+object MessageType {
+  case object ArrivalNotification            extends MessageType("IE007", "CC007A")
+  case object UnloadingRemarks               extends MessageType("IE044", "CC044A")
+  case object DepartureDeclaration           extends MessageType("IE015", "CC015B")
+  case object DeclarationCancellationRequest extends MessageType("IE014", "CC014A")
 
   val values: Seq[MessageType] = Seq(
     ArrivalNotification,
@@ -38,14 +32,8 @@ object MessageType extends Enumerable.Implicits {
     DepartureDeclaration,
     DeclarationCancellationRequest
   )
-  val departureValues: Seq[Directable] = Seq(DepartureDeclaration, DeclarationCancellationRequest)
 
-  val arrivalValues: Seq[Directable] = Seq(ArrivalNotification, UnloadingRemarks)
+  val departureValues: Seq[MessageType] = Seq(DepartureDeclaration, DeclarationCancellationRequest)
 
-  val validMessages: Seq[Directable] = departureValues ++ arrivalValues
-
-  val allMessages: Seq[MessageType] = departureValues ++ arrivalValues
-
-  implicit val enumerable: Enumerable[MessageType] =
-    Enumerable(allMessages.map(v => v.code -> v): _*)
+  val arrivalValues: Seq[MessageType] = Seq(ArrivalNotification, UnloadingRemarks)
 }

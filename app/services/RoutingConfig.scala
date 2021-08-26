@@ -20,7 +20,7 @@ import com.google.inject.{Inject, Singleton}
 import play.api.Configuration
 
 @Singleton
-class RoutingConfig @Inject()(config: Configuration){
+class RoutingConfig @Inject() (config: Configuration) {
 
   val apiXi: Boolean = config.get[Boolean]("microservice.features.routing.api.xi")
   val webXi: Boolean = config.get[Boolean]("microservice.features.routing.web.xi")

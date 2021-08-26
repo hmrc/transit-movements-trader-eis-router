@@ -18,31 +18,41 @@ package controllers
 
 import config.AppConfig
 import controllers.actions.ChannelAction
-import javax.inject.{Inject, Singleton}
 import models.requests.ChannelRequest
-import play.api.mvc.{Action, ControllerComponents}
+import play.api.mvc.Action
+import play.api.mvc.ControllerComponents
 import services.RoutingService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import uk.gov.hmrc.play.http.HeaderCarrierConverter
 
+import javax.inject.Inject
+import javax.inject.Singleton
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.xml.NodeSeq
 
 @Singleton()
-class MessagesController @Inject()(appConfig: AppConfig, cc: ControllerComponents, channelAction: ChannelAction, routingService: RoutingService)
-  extends BackendController(cc) {
+class MessagesController @Inject() (
+  appConfig: AppConfig,
+  cc: ControllerComponents,
+  channelAction: ChannelAction,
+  routingService: RoutingService
+) extends BackendController(cc) {
 
-  def post(): Action[NodeSeq] = (Action andThen channelAction).async(parse.xml) { implicit request: ChannelRequest[NodeSeq] =>
-    routingService.submitMessage(request.body) match {
-      case Left(error) => Future.successful(BadRequest(error.message))
-      case Right(response) => response.map {
-        r =>
-          r.status match {
-            case ACCEPTED => Accepted("Message accepted")
-            case INTERNAL_SERVER_ERROR => BadGateway
-            case _ => Status(r.status)
-          }
+  def post(): Action[NodeSeq] = (Action andThen channelAction).async(parse.xml) {
+    request: ChannelRequest[NodeSeq] =>
+      val headerCarrier = HeaderCarrierConverter.fromRequest(request)
+
+      routingService.submitMessage(request.body, request.channel, headerCarrier) match {
+        case Left(error) =>
+          Future.successful(BadRequest(error.message))
+        case Right(response) =>
+          response.map(_.status match {
+            case ACCEPTED                                => Accepted
+            case FORBIDDEN                               => InternalServerError
+            case GATEWAY_TIMEOUT | INTERNAL_SERVER_ERROR => BadGateway
+            case status                                  => Status(status)
+          })
       }
-    }
   }
 }

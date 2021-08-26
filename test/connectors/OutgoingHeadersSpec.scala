@@ -16,32 +16,30 @@
 
 package connectors
 
-import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
-import org.scalatest.{BeforeAndAfterEach, OptionValues}
-import org.scalatestplus.mockito.MockitoSugar
-import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.test.FakeRequest
+import uk.gov.hmrc.play.http.HeaderCarrierConverter
 
-class OutgoingRequestFilterSpec extends AnyFreeSpec with Matchers with GuiceOneAppPerSuite with OptionValues with ScalaFutures with MockitoSugar with BeforeAndAfterEach {
-  "OutgoingRequestFilter" - {
-    "retainOnlyCustomUpstreamHeaders must retain only custom upstream headers" in {
+class OutgoingHeadersSpec extends AnyFreeSpec with Matchers {
+  "OutgoingHeadersFilter" - {
+    "must retain only custom upstream headers" in {
       implicit val requestHeader = FakeRequest().withHeaders(
         "X-Forwarded-Host" -> "mdtp",
         "X-Correlation-ID" -> "137302f5-71ae-40a4-bd92-cac2ae7sde2f",
-        "Date" -> "Tue, 29 Sep 2020 11:46:50 +0100",
-        "Content-Type" -> "application/xml",
-        "Accept" -> "application/xml",
-        "X-Message-Type" -> "IE015",
+        "Date"             -> "Tue, 29 Sep 2020 11:46:50 +0100",
+        "Content-Type"     -> "application/xml",
+        "Accept"           -> "application/xml",
+        "X-Message-Type"   -> "IE015",
         "X-Message-Sender" -> "MDTP-000000000000000000000000011-01",
-        "Authorization" -> "Bearer 123",
-        "Connection" -> "Keep-Alive",
-        "Keep-Alive" -> "timeout=5, max=1000",
-        "Age" -> "0"
+        "Authorization"    -> "Bearer 123",
+        "Connection"       -> "Keep-Alive",
+        "Keep-Alive"       -> "timeout=5, max=1000",
+        "Age"              -> "0"
       )
 
-      val result: Seq[(String, String)] = OutgoingRequestFilter()
+      val result: Seq[(String, String)] =
+        HeaderCarrierConverter.fromRequest(requestHeader).headers(OutgoingHeaders.headers)
 
       result.size mustBe 5
 
