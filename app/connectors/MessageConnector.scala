@@ -22,6 +22,7 @@ import models.RoutingOption
 import models.RoutingOption.Gb
 import models.RoutingOption.Xi
 import play.api.Logging
+import play.api.http.HeaderNames
 import play.api.http.Status
 import uk.gov.hmrc.http.Authorization
 import uk.gov.hmrc.http.HeaderCarrier
@@ -48,7 +49,8 @@ class MessageConnector @Inject() (config: AppConfig, http: HttpClient)(implicit
 
     val requestHeaders = hc.headers(OutgoingHeaders.headers) ++ Seq(
       "X-Correlation-Id"  -> UUID.randomUUID().toString,
-      "CustomProcessHost" -> "Digital"
+      "CustomProcessHost" -> "Digital",
+      HeaderNames.ACCEPT -> "application/xml"  // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
     )
 
     implicit val headerCarrier = hc
@@ -71,6 +73,7 @@ class MessageConnector @Inject() (config: AppConfig, http: HttpClient)(implicit
               |X-Request-ID: ${getHeader("X-Request-Id")}
               |X-Message-Type: ${getHeader("X-Message-Type")}
               |X-Message-Sender: ${getHeader("X-Message-Sender")}
+              |Accept: ${getHeader("Accept")}
               |Response status: ${result.status}
               """.stripMargin
 
