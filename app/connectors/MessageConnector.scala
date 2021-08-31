@@ -24,11 +24,11 @@ import models.RoutingOption.Xi
 import play.api.Logging
 import play.api.http.HeaderNames
 import play.api.http.Status
-import uk.gov.hmrc.http.Authorization
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads.Implicits._
 import uk.gov.hmrc.http.HttpResponse
+import uk.gov.hmrc.http.{HeaderNames => HMRCHeaderNames}
 
 import java.util.UUID
 import scala.concurrent.ExecutionContext
@@ -54,11 +54,11 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
     val requestHeaders = hc.headers(OutgoingHeaders.headers) ++ Seq(
       "X-Correlation-Id"  -> UUID.randomUUID().toString,
       "CustomProcessHost" -> "Digital",
-      HeaderNames.ACCEPT -> MimeTypes.XML  // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
+      HeaderNames.ACCEPT  -> MimeTypes.XML,  // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
+      HeaderNames.AUTHORIZATION -> s"Bearer ${details.token}"
     )
 
     implicit val headerCarrier = hc
-      .copy(authorization = Some(Authorization(s"Bearer ${details.token}")))
       .withExtraHeaders(requestHeaders: _*)
 
     def getHeader(header: String): String =
@@ -68,14 +68,15 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
         .map(_._2)
         .getOrElse("undefined")
 
-    http.POSTString[HttpResponse](details.url, xml.toString, requestHeaders).map { result =>
+    http.POSTString[HttpResponse](details.url, xml.toString).map { result =>
       lazy val logMessage =
         s"""|Posting NCTS message, ${details.routingMessage}
-              |X-Correlation-ID: ${getHeader("X-Correlation-Id")}
-              |X-Request-ID: ${getHeader("X-Request-Id")}
+              |X-Correlation-Id: ${getHeader("X-Correlation-Id")}
+              |${HMRCHeaderNames.xRequestId}: ${getHeader(HMRCHeaderNames.xRequestId)}
               |X-Message-Type: ${getHeader("X-Message-Type")}
               |X-Message-Sender: ${getHeader("X-Message-Sender")}
               |Accept: ${getHeader("Accept")}
+              |CustomProcessHost: ${getHeader("CustomProcessHost")}
               |Response status: ${result.status}
               """.stripMargin
 
