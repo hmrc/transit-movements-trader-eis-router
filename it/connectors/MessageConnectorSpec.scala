@@ -28,8 +28,8 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import play.api.test.Helpers._
 import uk.gov.hmrc.http.HeaderCarrier
-import play.api.http.ContentTypes
 import play.api.http.HeaderNames
+import play.api.http.MimeTypes
 
 class MessageConnectorSpec
     extends AnyWordSpec
@@ -89,7 +89,7 @@ class MessageConnectorSpec
               matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
             )
             .withHeader("CustomProcessHost", equalTo("Digital"))
-            .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
+            .withHeader(HeaderNames.ACCEPT, equalTo(MimeTypes.XML))
             .willReturn(aResponse().withStatus(ACCEPTED))
         )
 

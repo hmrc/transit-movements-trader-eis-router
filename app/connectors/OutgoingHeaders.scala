@@ -24,6 +24,8 @@ object OutgoingHeaders {
     HeaderNames.CONTENT_TYPE,
     HeaderNames.ACCEPT,
     "X-Message-Type",
-    "X-Message-Sender"
+    "X-Message-Sender",
+     "X-Correlation-Id",
+     HeaderNames.ACCEPT
   )
 }
