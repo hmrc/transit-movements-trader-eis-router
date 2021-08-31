@@ -35,17 +35,20 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.xml.NodeSeq
 import play.api.http.MimeTypes
+import play.api.Configuration
 
-class MessageConnector @Inject() (config: AppConfig, http: HttpClient)(implicit
+class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, http: HttpClient)(implicit
   ec: ExecutionContext
 ) extends Logging {
 
   private case class EisDetails(url: String, token: String, routingMessage: String)
 
+  private val headerCarrierConfig = HeaderCarrier.Config.fromConfig(config.underlying)
+
   def post(xml: NodeSeq, routingOption: RoutingOption, hc: HeaderCarrier): Future[HttpResponse] = {
     val details = routingOption match {
-      case Xi => EisDetails(config.eisniUrl, config.eisniBearerToken, "routing to NI")
-      case Gb => EisDetails(config.eisgbUrl, config.eisgbBearerToken, "routing to GB")
+      case Xi => EisDetails(appConfig.eisniUrl, appConfig.eisniBearerToken, "routing to NI")
+      case Gb => EisDetails(appConfig.eisgbUrl, appConfig.eisgbBearerToken, "routing to GB")
     }
 
     val requestHeaders = hc.headers(OutgoingHeaders.headers) ++ Seq(
@@ -60,11 +63,9 @@ class MessageConnector @Inject() (config: AppConfig, http: HttpClient)(implicit
 
     def getHeader(header: String): String =
       headerCarrier
-        .headers(Seq(header))
-        .collectFirst {
-          case (requestHeader, headerValue) if header.toLowerCase == requestHeader.toLowerCase =>
-            headerValue
-        }
+        .headersForUrl(headerCarrierConfig)(details.url)
+        .find(_._1.toLowerCase.equals(header.toLowerCase()))
+        .map(_._2)
         .getOrElse("undefined")
 
     http.POSTString[HttpResponse](details.url, xml.toString, requestHeaders).map { result =>
