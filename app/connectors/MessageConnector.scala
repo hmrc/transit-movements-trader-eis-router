@@ -34,6 +34,7 @@ import java.util.UUID
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.xml.NodeSeq
+import play.api.http.MimeTypes
 
 class MessageConnector @Inject() (config: AppConfig, http: HttpClient)(implicit
   ec: ExecutionContext
@@ -50,7 +51,7 @@ class MessageConnector @Inject() (config: AppConfig, http: HttpClient)(implicit
     val requestHeaders = hc.headers(OutgoingHeaders.headers) ++ Seq(
       "X-Correlation-Id"  -> UUID.randomUUID().toString,
       "CustomProcessHost" -> "Digital",
-      HeaderNames.ACCEPT -> "application/xml"  // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
+      HeaderNames.ACCEPT -> MimeTypes.XML  // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
     )
 
     implicit val headerCarrier = hc
@@ -66,7 +67,7 @@ class MessageConnector @Inject() (config: AppConfig, http: HttpClient)(implicit
         }
         .getOrElse("undefined")
 
-    http.POSTString[HttpResponse](details.url, xml.toString).map { result =>
+    http.POSTString[HttpResponse](details.url, xml.toString, requestHeaders).map { result =>
       lazy val logMessage =
         s"""|Posting NCTS message, ${details.routingMessage}
               |X-Correlation-ID: ${getHeader("X-Correlation-Id")}
