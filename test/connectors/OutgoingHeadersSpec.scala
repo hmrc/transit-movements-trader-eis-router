@@ -41,11 +41,10 @@ class OutgoingHeadersSpec extends AnyFreeSpec with Matchers {
       val result: Seq[(String, String)] =
         HeaderCarrierConverter.fromRequest(requestHeader).headers(OutgoingHeaders.headers)
 
-      result.size mustBe 5
+      result.size mustBe 4
 
       result must contain("Date" -> "Tue, 29 Sep 2020 11:46:50 +0100")
       result must contain("Content-Type" -> "application/xml")
-      result must contain("Accept" -> "application/xml")
       result must contain("X-Message-Type" -> "IE015")
       result must contain("X-Message-Sender" -> "MDTP-000000000000000000000000011-01")
     }

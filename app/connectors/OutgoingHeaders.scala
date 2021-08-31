@@ -22,7 +22,6 @@ object OutgoingHeaders {
   val headers = Seq(
     HeaderNames.DATE,
     HeaderNames.CONTENT_TYPE,
-    HeaderNames.ACCEPT,
     "X-Message-Type",
     "X-Message-Sender"
   )
