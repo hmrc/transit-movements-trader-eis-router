@@ -20,6 +20,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import play.api.test.FakeRequest
 import uk.gov.hmrc.play.http.HeaderCarrierConverter
+import uk.gov.hmrc.http.{HeaderNames => HMRCHeaderNames}
 
 class OutgoingHeadersSpec extends AnyFreeSpec with Matchers {
   "OutgoingHeadersFilter" - {
@@ -27,6 +28,7 @@ class OutgoingHeadersSpec extends AnyFreeSpec with Matchers {
       implicit val requestHeader = FakeRequest().withHeaders(
         "X-Forwarded-Host" -> "mdtp",
         "X-Correlation-ID" -> "137302f5-71ae-40a4-bd92-cac2ae7sde2f",
+        "X-Request-Id"     -> "1123456-7890",
         "Date"             -> "Tue, 29 Sep 2020 11:46:50 +0100",
         "Content-Type"     -> "application/xml",
         "Accept"           -> "application/xml",
@@ -41,12 +43,13 @@ class OutgoingHeadersSpec extends AnyFreeSpec with Matchers {
       val result: Seq[(String, String)] =
         HeaderCarrierConverter.fromRequest(requestHeader).headers(OutgoingHeaders.headers)
 
-      result.size mustBe 4
+      result.size mustBe 5
 
       result must contain("Date" -> "Tue, 29 Sep 2020 11:46:50 +0100")
       result must contain("Content-Type" -> "application/xml")
       result must contain("X-Message-Type" -> "IE015")
       result must contain("X-Message-Sender" -> "MDTP-000000000000000000000000011-01")
+      result must contain(HMRCHeaderNames.xRequestId -> "1123456-7890")
     }
   }
 }
