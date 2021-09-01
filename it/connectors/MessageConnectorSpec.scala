@@ -112,7 +112,8 @@ class MessageConnectorSpec
             .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
             .withHeader(
               "X-Correlation-Id",
-              matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"))
+              matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
+            )
             .willReturn(aResponse().withStatus(ACCEPTED))
         )
 
@@ -147,7 +148,8 @@ class MessageConnectorSpec
             .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
             .withHeader(
               "X-Correlation-Id",
-              matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"))
+              matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
+            )
             .willReturn(aResponse().withStatus(statusCode))
         )
 

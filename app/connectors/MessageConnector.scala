@@ -37,8 +37,8 @@ import scala.xml.NodeSeq
 import play.api.http.MimeTypes
 import play.api.Configuration
 
-class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, http: HttpClient)(implicit
-  ec: ExecutionContext
+class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, http: HttpClient)(
+  implicit ec: ExecutionContext
 ) extends Logging {
 
   private case class EisDetails(url: String, token: String, routingMessage: String)
@@ -52,20 +52,21 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
     }
 
     val requestHeaders = hc.headers(OutgoingHeaders.headers) ++ Seq(
-      "X-Correlation-Id"  -> UUID.randomUUID().toString,
-      "CustomProcessHost" -> "Digital",
-      HeaderNames.ACCEPT  -> MimeTypes.XML,  // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
+      "X-Correlation-Id"        -> UUID.randomUUID().toString,
+      "CustomProcessHost"       -> "Digital",
+      HeaderNames.ACCEPT        -> MimeTypes.XML, // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
       HeaderNames.AUTHORIZATION -> s"Bearer ${details.token}"
     )
 
     implicit val headerCarrier = hc
+      .copy(authorization = None, otherHeaders = Seq.empty)
       .withExtraHeaders(requestHeaders: _*)
 
     def getHeader(header: String): String =
       headerCarrier
         .headersForUrl(headerCarrierConfig)(details.url)
-        .find(_._1.toLowerCase.equals(header.toLowerCase()))
-        .map(_._2)
+        .find { case (name, value) => name.toLowerCase == header.toLowerCase }
+        .map { case (name, value) => value }
         .getOrElse("undefined")
 
     http.POSTString[HttpResponse](details.url, xml.toString).map { result =>
