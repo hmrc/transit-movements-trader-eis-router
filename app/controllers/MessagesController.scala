@@ -49,7 +49,6 @@ class MessagesController @Inject() (
         case Right(response) =>
           response.map(_.status match {
             case ACCEPTED                                => Accepted
-            case FORBIDDEN                               => InternalServerError
             case GATEWAY_TIMEOUT | INTERNAL_SERVER_ERROR => BadGateway
             case status                                  => Status(status)
           })
