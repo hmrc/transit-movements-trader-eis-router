@@ -20,6 +20,7 @@ import com.google.inject.Inject
 import connectors.MessageConnector
 import models.ChannelType
 import models.FailureMessage
+import models.GuaranteeReference
 import models.MessageType
 import models.Office
 import models.ParseError
@@ -31,7 +32,6 @@ import uk.gov.hmrc.http.HttpResponse
 
 import scala.concurrent.Future
 import scala.xml.NodeSeq
-import models.RoutingOption
 
 class RoutingService @Inject() (routeChecker: RouteChecker, messageConnector: MessageConnector)
     extends Logging {
@@ -45,22 +45,27 @@ class RoutingService @Inject() (routeChecker: RouteChecker, messageConnector: Me
       case None =>
         Left(InvalidMessageCode(s"Invalid Message Type"))
 
-      case Some(XmlParser.RootNode(messageType, _))
+      case Some(XmlParser.RootNode(messageType, rootXml))
           if MessageType.guaranteeValues.contains(messageType) =>
 
-        val routingOption = RoutingOption.Gb
+        val parseGrn: Either[ParseError, GuaranteeReference] =
+          XmlParser.guaranteeReference(rootXml)
 
-        logger.debug(
-          s"Guarantee message ${messageType.code} routing option ${routingOption.prefix} with channel ${channel.name}"
-        )
+        parseGrn.flatMap { grn =>
+          val routingOption = grn.getRoutingOption
 
-        Either.cond(
-          routeChecker.canForward(routingOption, channel),
-          messageConnector.post(xml, routingOption, headerCarrier),
-          RejectionMessage(
-            s"Routing to guarantee management system rejected on ${channel.name} channel"
+          logger.debug(
+            s"Guarantee reference ${grn.value} routing option ${routingOption.prefix} with channel ${channel.name}"
           )
-        )
+
+          Either.cond(
+            routeChecker.canForward(routingOption, channel),
+            messageConnector.post(xml, routingOption, headerCarrier),
+            RejectionMessage(
+              s"Routing to ${grn.countryCode} rejected on ${channel.name} channel"
+            )
+          )
+        }
 
       case Some(XmlParser.RootNode(messageType, rootXml)) =>
         val parseOffice: Either[ParseError, Office] =

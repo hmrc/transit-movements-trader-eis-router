@@ -23,7 +23,8 @@ final case class RejectionMessage(override val message: String) extends FailureM
 sealed abstract class ParseError(override val message: String) extends FailureMessage(message)
 
 object ParseError {
-  final case class InvalidMessageCode(override val message: String) extends ParseError(message)
-  final case class PresentationEmpty(override val message: String)  extends ParseError(message)
-  final case class DepartureEmpty(override val message: String)     extends ParseError(message)
+  final case class InvalidMessageCode(override val message: String)      extends ParseError(message)
+  final case class PresentationEmpty(override val message: String)       extends ParseError(message)
+  final case class DepartureEmpty(override val message: String)          extends ParseError(message)
+  final case class GuaranteeReferenceEmpty(override val message: String) extends ParseError(message)
 }

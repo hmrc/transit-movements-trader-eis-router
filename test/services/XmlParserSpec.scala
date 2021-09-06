@@ -16,8 +16,10 @@
 
 package services
 
-import models.{DepartureOffice, PresentationOffice}
-import models.ParseError.{DepartureEmpty, PresentationEmpty}
+import models.DepartureOffice
+import models.GuaranteeReference
+import models.ParseError._
+import models.PresentationOffice
 import org.scalatest.OptionValues
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
@@ -43,6 +45,27 @@ class XmlParserSpec extends AnyFreeSpec with Matchers with OptionValues {
         </transitRequest>
 
       XmlParser.getValidRoot(input).isDefined mustBe true
+    }
+  }
+
+  "guaranteeReference" - {
+    "must return Left(GuaranteeReferenceEmpty) if guarantee reference missing" in {
+      val input =
+        <CD034A>
+        </CD034A>
+
+      XmlParser.guaranteeReference(input) mustBe a[Left[GuaranteeReferenceEmpty, _]]
+    }
+
+    "must return Right(GuaranteeReference) if valid message found" in {
+      val input =
+        <CD034A>
+          <GUAREF2>
+            <GuaRefNumGRNREF21>20XI0000010000GX1</GuaRefNumGRNREF21>
+          </GUAREF2>
+        </CD034A>
+
+      XmlParser.guaranteeReference(input) mustBe a[Right[_, GuaranteeReference]]
     }
   }
 
