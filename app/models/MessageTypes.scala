@@ -25,15 +25,19 @@ object MessageType {
   case object UnloadingRemarks               extends MessageType("IE044", "CC044A")
   case object DepartureDeclaration           extends MessageType("IE015", "CC015B")
   case object DeclarationCancellationRequest extends MessageType("IE014", "CC014A")
+  case object QueryOnGuarantees              extends MessageType("IE034", "CD034A")
 
   val values: Seq[MessageType] = Seq(
     ArrivalNotification,
     UnloadingRemarks,
     DepartureDeclaration,
-    DeclarationCancellationRequest
+    DeclarationCancellationRequest,
+    QueryOnGuarantees
   )
 
   val departureValues: Seq[MessageType] = Seq(DepartureDeclaration, DeclarationCancellationRequest)
 
   val arrivalValues: Seq[MessageType] = Seq(ArrivalNotification, UnloadingRemarks)
+
+  val guaranteeValues: Seq[MessageType] = Seq(QueryOnGuarantees)
 }

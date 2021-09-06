@@ -17,8 +17,8 @@
 package controllers
 
 import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, Materializer}
-import config.AppConfig
+import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import controllers.actions.ChannelAction
 import models.ChannelType.Api
 import models.ParseError.InvalidMessageCode
@@ -29,15 +29,16 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
-import play.api.http.{HeaderNames, MimeTypes}
+import play.api.http.HeaderNames
+import play.api.http.MimeTypes
 import play.api.libs.json.Json
 import play.api.mvc.AnyContentAsXml
+import play.api.test.FakeHeaders
+import play.api.test.FakeRequest
+import play.api.test.Helpers
 import play.api.test.Helpers._
-import play.api.test.{FakeHeaders, FakeRequest, Helpers}
-import play.api.{Configuration, Environment}
 import services.RoutingService
 import uk.gov.hmrc.http.HttpResponse
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.concurrent.Future
 
@@ -106,15 +107,8 @@ class MessagesControllerSpec
 
   implicit def mat: Materializer = ActorMaterializer()
 
-  private val env           = Environment.simple()
-  private val configuration = Configuration.load(env)
-
-  private val serviceConfig = new ServicesConfig(configuration)
-  private val appConfig     = new AppConfig(configuration, serviceConfig)
-
   private def controller(routingService: RoutingService = mock[RoutingService]) =
     new MessagesController(
-      appConfig,
       Helpers.stubControllerComponents(),
       app.injector.instanceOf[ChannelAction],
       routingService

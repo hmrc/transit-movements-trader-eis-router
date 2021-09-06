@@ -31,6 +31,7 @@ import uk.gov.hmrc.http.HttpResponse
 
 import scala.concurrent.Future
 import scala.xml.NodeSeq
+import models.RoutingOption
 
 class RoutingService @Inject() (routeChecker: RouteChecker, messageConnector: MessageConnector)
     extends Logging {
@@ -43,6 +44,23 @@ class RoutingService @Inject() (routeChecker: RouteChecker, messageConnector: Me
     XmlParser.getValidRoot(xml) match {
       case None =>
         Left(InvalidMessageCode(s"Invalid Message Type"))
+
+      case Some(XmlParser.RootNode(messageType, _))
+          if MessageType.guaranteeValues.contains(messageType) =>
+
+        val routingOption = RoutingOption.Gb
+
+        logger.debug(
+          s"Guarantee message ${messageType.code} routing option ${routingOption.prefix} with channel ${channel.name}"
+        )
+
+        Either.cond(
+          routeChecker.canForward(routingOption, channel),
+          messageConnector.post(xml, routingOption, headerCarrier),
+          RejectionMessage(
+            s"Routing to guarantee management system rejected on ${channel.name} channel"
+          )
+        )
 
       case Some(XmlParser.RootNode(messageType, rootXml)) =>
         val parseOffice: Either[ParseError, Office] =

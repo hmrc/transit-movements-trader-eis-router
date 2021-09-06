@@ -16,7 +16,6 @@
 
 package controllers
 
-import config.AppConfig
 import controllers.actions.ChannelAction
 import models.requests.ChannelRequest
 import play.api.mvc.Action
@@ -33,7 +32,6 @@ import scala.xml.NodeSeq
 
 @Singleton()
 class MessagesController @Inject() (
-  appConfig: AppConfig,
   cc: ControllerComponents,
   channelAction: ChannelAction,
   routingService: RoutingService

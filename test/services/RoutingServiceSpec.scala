@@ -271,5 +271,45 @@ class RoutingServiceSpec
         result mustBe a[Left[FailureMessage, _]]
       }
     }
+
+    "guarantee messages are routed to GB" in {
+      val input = <TransitWrapper>
+        <CD034A>
+          <SynIdeMES1>UNOC</SynIdeMES1>
+          <SynVerNumMES2>3</SynVerNumMES2>
+          <MesSenMES3>MDTP-GUA-22b9899e24ee48e6a18997d1</MesSenMES3>
+          <MesRecMES6>NTA.GB</MesRecMES6>
+          <DatOfPreMES9>20210813</DatOfPreMES9>
+          <TimOfPreMES10>175101</TimOfPreMES10>
+          <IntConRefMES11>deadbeefcafeba</IntConRefMES11>
+          <MesIdeMES19>deadbeefcafeba</MesIdeMES19>
+          <MesTypMES20>GB034A</MesTypMES20>
+          <TRAPRIRC1>
+            <TINRC159>GB12345678900</TINRC159>
+          </TRAPRIRC1>
+          <GUAREF2>
+            <GuaRefNumGRNREF21>05DE3300BE0001067A001017</GuaRefNumGRNREF21>
+            <GUAQUE>
+              <QueIdeQUE1>2</QueIdeQUE1>
+            </GUAQUE>
+            <ACCDOC728>
+              <AccCodCOD729>1234</AccCodCOD729>
+            </ACCDOC728>
+          </GUAREF2>
+        </CD034A>
+      </TransitWrapper>
+
+      forAll(channelGen) { channel =>
+        val mc = mock[MessageConnector]
+        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+        val fsrc = mock[RouteChecker]
+        when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
+
+        service(fsrc, mc).submitMessage(input, channel, hc)
+
+        verify(mc).post(any(), eqTo(Gb), eqTo(hc))
+      }
+    }
   }
 }
