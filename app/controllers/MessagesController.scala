@@ -48,10 +48,10 @@ class MessagesController @Inject() (
           Future.successful(BadRequest(error.message))
         case Right(response) =>
           response.map(_.status match {
-            case ACCEPTED                                => Accepted
-            case FORBIDDEN                               => InternalServerError
-            case GATEWAY_TIMEOUT | INTERNAL_SERVER_ERROR => BadGateway
-            case status                                  => Status(status)
+            case ACCEPTED                    => Accepted
+            case FORBIDDEN | GATEWAY_TIMEOUT => InternalServerError
+            case INTERNAL_SERVER_ERROR       => BadGateway
+            case status                      => Status(status)
           })
       }
   }
