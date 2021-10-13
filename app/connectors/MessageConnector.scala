@@ -69,9 +69,11 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
         .map { case (name, value) => value }
         .getOrElse("undefined")
 
-    http.POSTString[HttpResponse](details.url, xml.toString).map { result =>
-      lazy val logMessage =
-        s"""|Posting NCTS message, ${details.routingMessage}
+    http
+      .POSTString[HttpResponse](details.url, xml.toString)
+      .map { result =>
+        lazy val logMessage =
+          s"""|Posting NCTS message, ${details.routingMessage}
               |X-Correlation-Id: ${getHeader("X-Correlation-Id")}
               |${HMRCHeaderNames.xRequestId}: ${getHeader(HMRCHeaderNames.xRequestId)}
               |X-Message-Type: ${getHeader("X-Message-Type")}
@@ -81,19 +83,20 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
               |Response status: ${result.status}
               """.stripMargin
 
-      if (Status.isServerError(result.status) || result.status == Status.FORBIDDEN)
-        logger.warn(logMessage)
-      else
-        logger.info(logMessage)
+        if (Status.isServerError(result.status) || result.status == Status.FORBIDDEN)
+          logger.warn(logMessage)
+        else
+          logger.info(logMessage)
 
-      result
-    }.recover{
-        case e : Exception => {
+        result
+      }
+      .recover {
+        case e: Exception => {
           val message = s"${details.url} failed to retrieve data with message ${e.getMessage}"
           logger.warn(message)
           HttpResponse(500, message)
         }
       }
-    }
+  }
 
 }
