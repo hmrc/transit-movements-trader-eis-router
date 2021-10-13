@@ -17,19 +17,24 @@
 package connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock._
+import config.AppConfig
 import models.RoutingOption
 import models.RoutingOption.Gb
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.when
 import org.scalacheck.Gen
-import org.scalatest.concurrent.IntegrationPatience
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+import play.api.Configuration
+import play.api.http.{HeaderNames, MimeTypes}
 import play.api.test.Helpers._
-import uk.gov.hmrc.http.HeaderCarrier
-import play.api.http.HeaderNames
-import play.api.http.MimeTypes
+import uk.gov.hmrc.http.{HeaderCarrier, HttpClient}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future._
 
 class MessageConnectorSpec
     extends AnyWordSpec
@@ -160,6 +165,26 @@ class MessageConnectorSpec
         result.status mustEqual statusCode
       }
     }
+
+     "handle exceptions by returning an HttpResponse with status code 500" in {
+      val app = appBuilder.build()
+
+      running(app) {
+        val appConfig = app.injector.instanceOf[AppConfig]
+        val config = app.injector.instanceOf[Configuration]
+        val http = mock[HttpClient]
+
+        when(http.POSTString(any(), any(), any())(any(), any(), any())).thenReturn(failed(new RuntimeException("Simulated timeout")))
+
+        val connector = new MessageConnector(appConfig, config, http)
+        val hc = HeaderCarrier()
+        val result = connector.post(<document></document>, Gb, hc)
+
+        result.futureValue.status mustEqual INTERNAL_SERVER_ERROR
+      }
+    }
+
+
   }
 
   override protected def portConfigKey: String = "microservice.services.eis.port"
