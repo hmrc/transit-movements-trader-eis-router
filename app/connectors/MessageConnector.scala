@@ -94,7 +94,7 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
         case e: Exception => {
           val message = s"${details.url} failed to retrieve data with message ${e.getMessage}"
           logger.warn(message)
-          HttpResponse(500, message)
+          HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
         }
       }
   }
