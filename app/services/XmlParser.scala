@@ -32,8 +32,8 @@ object XmlParser {
 
   def getValidRoot(xml: NodeSeq): Option[RootNode] =
     MessageType.values.collectFirst {
-      case messageType if (xml \\ messageType.rootNode).nonEmpty =>
-        RootNode(messageType, xml \\ messageType.rootNode)
+      case messageType if (xml \ messageType.rootNode).nonEmpty =>
+        RootNode(messageType, xml \ messageType.rootNode)
     }
 
   def guaranteeReference(xml: NodeSeq): ParseHandler[GuaranteeReference] =
