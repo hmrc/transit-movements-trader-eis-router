@@ -21,8 +21,10 @@ import config.AppConfig
 import models.RoutingOption
 import models.RoutingOption.Gb
 import models.RoutingOption.Xi
+import play.api.Configuration
 import play.api.Logging
 import play.api.http.HeaderNames
+import play.api.http.MimeTypes
 import play.api.http.Status
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpClient
@@ -34,8 +36,6 @@ import java.util.UUID
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.xml.NodeSeq
-import play.api.http.MimeTypes
-import play.api.Configuration
 
 class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, http: HttpClient)(
   implicit ec: ExecutionContext
@@ -65,8 +65,8 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
     def getHeader(header: String): String =
       headerCarrier
         .headersForUrl(headerCarrierConfig)(details.url)
-        .find { case (name, value) => name.toLowerCase == header.toLowerCase }
-        .map { case (name, value) => value }
+        .find { case (name, _) => name.toLowerCase == header.toLowerCase }
+        .map { case (_, value) => value }
         .getOrElse("undefined")
 
     http

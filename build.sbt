@@ -29,6 +29,10 @@ lazy val scalacSettings = Def.settings(
   // Disable fatal warnings and warnings from discarding values
   scalacOptions ~= { opts =>
     opts.filterNot(Set("-Xfatal-warnings", "-Ywarn-value-discard"))
+  },
+  // Disable dead code warning as it is triggered by Mockito any()
+  Test / scalacOptions ~= { opts =>
+    opts.filterNot(Set("-Ywarn-dead-code"))
   }
 )
 

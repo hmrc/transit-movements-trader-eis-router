@@ -17,10 +17,10 @@
 package services
 
 import models.DepartureOffice
+import models.GuaranteeReference
 import models.MessageType
 import models.ParseError
-import models.ParseError.DepartureEmpty
-import models.ParseError.PresentationEmpty
+import models.ParseError._
 import models.PresentationOffice
 
 import scala.xml.NodeSeq
@@ -32,8 +32,14 @@ object XmlParser {
 
   def getValidRoot(xml: NodeSeq): Option[RootNode] =
     MessageType.values.collectFirst {
-      case messageType if (xml \\ messageType.rootNode).nonEmpty =>
-        RootNode(messageType, xml \\ messageType.rootNode)
+      case messageType if (xml \ messageType.rootNode).nonEmpty =>
+        RootNode(messageType, xml \ messageType.rootNode)
+    }
+
+  def guaranteeReference(xml: NodeSeq): ParseHandler[GuaranteeReference] =
+    (xml \\ "GUAREF2" \ "GuaRefNumGRNREF21").text match {
+      case grn if grn.isEmpty => Left(GuaranteeReferenceEmpty("Guarantee Reference Empty"))
+      case grn => Right(GuaranteeReference(grn))
     }
 
   def officeOfDeparture(xml: NodeSeq): ParseHandler[DepartureOffice] =

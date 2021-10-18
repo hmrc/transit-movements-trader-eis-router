@@ -20,9 +20,7 @@ import connectors.MessageConnector
 import models.ChannelType
 import models.ChannelType.Api
 import models.FailureMessage
-import models.ParseError.DepartureEmpty
-import models.ParseError.InvalidMessageCode
-import models.ParseError.PresentationEmpty
+import models.ParseError._
 import models.RoutingOption
 import models.RoutingOption.Gb
 import models.RoutingOption.Xi
@@ -94,6 +92,16 @@ class RoutingServiceSpec
       val result = service().submitMessage(input, Api, hc)
 
       result mustBe a[Left[PresentationEmpty, _]]
+    }
+
+    "returns GuaranteeReferenceEmpty if guarantee message with no guarantee reference" in {
+      val input = <TransitWrapper>
+        <CD034A></CD034A>
+      </TransitWrapper>
+
+      val result = service().submitMessage(input, Api, hc)
+
+      result mustBe a[Left[GuaranteeReferenceEmpty, _]]
     }
 
     "departure message starting with XI sends XI flag when feature switch is true" in {
@@ -257,6 +265,94 @@ class RoutingServiceSpec
             <RefNumRES1>GB12345</RefNumRES1>
           </CUSOFFPREOFFRES>
         </CC007A>
+      </TransitWrapper>
+
+      forAll(channelGen) { channel =>
+        val mc = mock[MessageConnector]
+        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+        val fsrc = mock[RouteChecker]
+        when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(false)
+
+        val result = service(fsrc, mc).submitMessage(input, channel, hc)
+
+        result mustBe a[Left[FailureMessage, _]]
+      }
+    }
+
+    "guarantee message starting with XI sends XI flag when feature switch is true" in {
+      val input = <TransitWrapper>
+        <CD034A>
+          <GUAREF2>
+            <GuaRefNumGRNREF21>20XI0000010000GX1</GuaRefNumGRNREF21>
+          </GUAREF2>
+        </CD034A>
+      </TransitWrapper>
+
+      forAll(channelGen) { channel =>
+        val mc = mock[MessageConnector]
+        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+        val fsrc = mock[RouteChecker]
+        when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(true)
+
+        service(fsrc, mc).submitMessage(input, channel, hc)
+
+        verify(mc).post(any(), eqTo(Xi), eqTo(hc))
+      }
+    }
+
+    "guarantee message starting with XI is rejected feature switch is false" in {
+      val input = <TransitWrapper>
+        <CD034A>
+          <GUAREF2>
+            <GuaRefNumGRNREF21>20XI0000010000GX1</GuaRefNumGRNREF21>
+          </GUAREF2>
+        </CD034A>
+      </TransitWrapper>
+
+      forAll(channelGen) { channel =>
+        val mc = mock[MessageConnector]
+        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+        val fsrc = mock[RouteChecker]
+        when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(false)
+
+        val result = service(fsrc, mc).submitMessage(input, channel, hc)
+
+        result mustBe a[Left[FailureMessage, _]]
+      }
+    }
+
+    "guarantee message starting with GB sends Gb flag when feature switch is true" in {
+      val input = <TransitWrapper>
+        <CD034A>
+          <GUAREF2>
+            <GuaRefNumGRNREF21>21GB3300BE0001067A001017</GuaRefNumGRNREF21>
+          </GUAREF2>
+        </CD034A>
+      </TransitWrapper>
+
+      forAll(channelGen) { channel =>
+        val mc = mock[MessageConnector]
+        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+        val fsrc = mock[RouteChecker]
+        when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
+
+        service(fsrc, mc).submitMessage(input, channel, hc)
+
+        verify(mc).post(any(), eqTo(Gb), eqTo(hc))
+      }
+    }
+
+    "guarantee message starting with GB is rejected feature switch is false" in {
+      val input = <TransitWrapper>
+        <CD034A>
+          <GUAREF2>
+            <GuaRefNumGRNREF21>21GB3300BE0001067A001017</GuaRefNumGRNREF21>
+          </GUAREF2>
+        </CD034A>
       </TransitWrapper>
 
       forAll(channelGen) { channel =>
