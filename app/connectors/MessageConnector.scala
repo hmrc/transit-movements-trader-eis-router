@@ -36,8 +36,13 @@ import java.util.UUID
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.xml.NodeSeq
+import play.api.libs.ws.WSClient
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
+import play.api.libs.ws.WSResponse
+import akka.stream.scaladsl.Sink
 
-class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, http: HttpClient)(
+class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, wsClient: WSClient)(
   implicit ec: ExecutionContext
 ) extends Logging {
 
@@ -45,7 +50,12 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
 
   private val headerCarrierConfig = HeaderCarrier.Config.fromConfig(config.underlying)
 
-  def post(xml: NodeSeq, routingOption: RoutingOption, hc: HeaderCarrier): Future[HttpResponse] = {
+  def post(
+    xml: Source[ByteString, _],
+    routingOption: RoutingOption,
+    hc: HeaderCarrier
+  ): Future[WSResponse] = {
+
     val details = routingOption match {
       case Xi => EisDetails(appConfig.eisniUrl, appConfig.eisniBearerToken, "routing to NI")
       case Gb => EisDetails(appConfig.eisgbUrl, appConfig.eisgbBearerToken, "routing to GB")
@@ -62,15 +72,18 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
       .copy(authorization = None, otherHeaders = Seq.empty)
       .withExtraHeaders(requestHeaders: _*)
 
+    val headersForUrl = headerCarrier.headersForUrl(headerCarrierConfig)(details.url)
+
     def getHeader(header: String): String =
-      headerCarrier
-        .headersForUrl(headerCarrierConfig)(details.url)
+      headersForUrl
         .find { case (name, _) => name.toLowerCase == header.toLowerCase }
         .map { case (_, value) => value }
         .getOrElse("undefined")
 
-    http
-      .POSTString[HttpResponse](details.url, xml.toString)
+    val wsResponse = wsClient
+      .url(details.url)
+      .withHttpHeaders(headersForUrl: _*)
+      .post(xml)
       .map { result =>
         lazy val logMessage =
           s"""|Posting NCTS message, ${details.routingMessage}
@@ -81,22 +94,27 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
               |Accept: ${getHeader("Accept")}
               |CustomProcessHost: ${getHeader("CustomProcessHost")}
               |Response status: ${result.status}
+              |Response body: ${result.body}
               """.stripMargin
 
         if (Status.isServerError(result.status) || result.status == Status.FORBIDDEN)
           logger.warn(logMessage)
-        else
+        else if (Status.isClientError(result.status)) {
+          logger.warn(logMessage)
+        } else
           logger.info(logMessage)
 
         result
       }
-      .recover {
-        case e: Exception => {
-          val message = s"${details.url} failed to retrieve data with message ${e.getMessage}"
-          logger.warn(message)
-          HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
-        }
+
+    wsResponse.failed.foreach {
+      case e: Exception => {
+        val message = s"${details.url} failed to retrieve data with message ${e.getMessage}"
+        logger.warn(message)
       }
+    }
+
+    wsResponse
   }
 
 }

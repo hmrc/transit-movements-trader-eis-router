@@ -40,4 +40,7 @@ object MessageType {
   val arrivalValues: Seq[MessageType] = Seq(ArrivalNotification, UnloadingRemarks)
 
   val guaranteeValues: Seq[MessageType] = Seq(QueryOnGuarantees)
+
+  def withRootNode(rootNode: String): Option[MessageType] =
+    values.find(_.rootNode == rootNode)
 }

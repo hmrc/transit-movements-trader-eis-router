@@ -16,7 +16,6 @@
 
 package controllers
 
-import controllers.actions.ChannelAction
 import models.requests.ChannelRequest
 import play.api.mvc.Action
 import play.api.mvc.ControllerComponents
@@ -29,28 +28,58 @@ import javax.inject.Singleton
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.xml.NodeSeq
+import play.api.mvc.BodyParser
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
+import play.api.libs.streams.Accumulator
+import play.api.mvc.Request
+import play.api.mvc.AnyContent
+import models.ChannelType
+import play.api.mvc.Result
+import play.api.Logging
 
 @Singleton()
 class MessagesController @Inject() (
   cc: ControllerComponents,
-  channelAction: ChannelAction,
   routingService: RoutingService
-) extends BackendController(cc) {
+) extends BackendController(cc) with Logging {
 
-  def post(): Action[NodeSeq] = (Action andThen channelAction).async(parse.xml) {
-    request: ChannelRequest[NodeSeq] =>
-      val headerCarrier = HeaderCarrierConverter.fromRequest(request)
+  val stream = BodyParser[Source[ByteString, _]]("stream") { _ =>
+    Accumulator
+      .source[ByteString]
+      .map(Right.apply)
+  }
 
-      routingService.submitMessage(request.body, request.channel, headerCarrier) match {
-        case Left(error) =>
-          Future.successful(BadRequest(error.message))
-        case Right(response) =>
-          response.map(_.status match {
-            case ACCEPTED                                => Accepted
-            case FORBIDDEN                               => InternalServerError
-            case GATEWAY_TIMEOUT | INTERNAL_SERVER_ERROR => BadGateway
-            case status                                  => Status(status)
-          })
+  private def requireChannelHeader[A](
+    result: ChannelType => Future[Result]
+  )(implicit request: Request[A]): Future[Result] =
+    request.headers
+      .get("channel")
+      .flatMap(ChannelType.withName)
+      .map(result)
+      .getOrElse {
+        Future.successful(
+          BadRequest("Missing channel header or incorrect value specified in channel header")
+        )
+      }
+
+  def post(): Action[Source[ByteString, _]] = Action.async(stream) {
+    implicit request: Request[Source[ByteString, _]] =>
+      requireChannelHeader { channel =>
+        routingService
+          .submitMessage(request.body, channel, HeaderCarrierConverter.fromRequest(request))
+          .map {
+            case Left(error) =>
+              logger.error(error.message)
+              BadRequest(error.message)
+            case Right(response) =>
+              response.status match {
+                case ACCEPTED                                => Accepted
+                case FORBIDDEN                               => InternalServerError
+                case GATEWAY_TIMEOUT | INTERNAL_SERVER_ERROR => BadGateway
+                case status                                  => Status(status)
+              }
+          }
       }
   }
 }

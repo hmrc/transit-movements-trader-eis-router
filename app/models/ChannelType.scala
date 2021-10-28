@@ -22,4 +22,6 @@ object ChannelType {
   case object Web extends ChannelType("web")
   case object Api extends ChannelType("api")
   val values: Seq[ChannelType] = Seq(Web, Api)
+  def withName(name: String): Option[ChannelType] =
+    values.find(_.name == name)
 }

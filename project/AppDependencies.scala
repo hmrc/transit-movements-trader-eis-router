@@ -8,8 +8,9 @@ object AppDependencies {
   private val catsVersion = "2.6.1"
 
   val compile = Seq(
-    "uk.gov.hmrc"   %% "bootstrap-backend-play-27" % "5.12.0",
-    "org.typelevel" %% "cats-core"                 % catsVersion
+    "uk.gov.hmrc"        %% "bootstrap-backend-play-28" % "5.12.0",
+    "org.typelevel"      %% "cats-core"                 % catsVersion,
+    "com.lightbend.akka" %% "akka-stream-alpakka-xml"   % "3.0.3"
   )
 
   val test = Seq(
@@ -21,7 +22,6 @@ object AppDependencies {
     "org.scalacheck"         %% "scalacheck"          % "1.15.4",
     "org.mockito"             % "mockito-core"        % "3.3.3",
     "org.scalatestplus"      %% "mockito-3-2"         % "3.1.2.0",
-    "org.scalatestplus"      %% "scalacheck-1-14"     % "3.2.2.0",
-    "org.typelevel"          %% "cats-core"           % catsVersion
+    "org.scalatestplus"      %% "scalacheck-1-14"     % "3.2.2.0"
   ).map(_ % s"$Test, $IntegrationTest")
 }
