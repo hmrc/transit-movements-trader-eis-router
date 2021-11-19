@@ -84,21 +84,21 @@ class MessagesControllerSpec
 
   private val fakeValidXmlRequest = FakeRequest(
     method = "POST",
-    uri = routes.MessagesController.post().url,
+    uri = routes.MessagesController.post.url,
     headers = FakeHeaders(Seq(HeaderNames.CONTENT_TYPE -> MimeTypes.XML, "channel" -> Api.name)),
     body = requestXmlBody
   )
 
   private val fakeEmptyRequest = FakeRequest(
     method = "POST",
-    uri = routes.MessagesController.post().url,
+    uri = routes.MessagesController.post.url,
     headers = FakeHeaders(Seq("channel" -> Api.name)),
     body = AnyContentAsXml
   )
 
   private val fakeJsonRequest = FakeRequest(
     method = "POST",
-    uri = routes.MessagesController.post().url,
+    uri = routes.MessagesController.post.url,
     headers = FakeHeaders(Seq(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON, "channel" -> Api.name)),
     body = Json.parse(""" {"key": "value"} """)
   )

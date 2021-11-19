@@ -46,7 +46,7 @@ class ChannelActionSpec extends AnyFreeSpec with Matchers with ScalaFutures with
   "ChannelAction" - {
     "returns BadRequest if the channel header is missing" in {
       val futureResult =
-        new Harness().call(FakeRequest("POST", routes.MessagesController.post().url))
+        new Harness().call(FakeRequest("POST", routes.MessagesController.post.url))
 
       whenReady(futureResult) { result =>
         status(Future.successful(result.left.get)) mustBe BAD_REQUEST
@@ -57,7 +57,7 @@ class ChannelActionSpec extends AnyFreeSpec with Matchers with ScalaFutures with
       val futureResult = new Harness().call(
         FakeRequest(
           "POST",
-          routes.MessagesController.post().url,
+          routes.MessagesController.post.url,
           Headers("channel" -> "abc"),
           NodeSeq.Empty
         )
@@ -72,7 +72,7 @@ class ChannelActionSpec extends AnyFreeSpec with Matchers with ScalaFutures with
       val futureResult = new Harness().call(
         FakeRequest(
           "POST",
-          routes.MessagesController.post().url,
+          routes.MessagesController.post.url,
           Headers("channel" -> Web.name),
           NodeSeq.Empty
         )
@@ -87,7 +87,7 @@ class ChannelActionSpec extends AnyFreeSpec with Matchers with ScalaFutures with
       val futureResult = new Harness().call(
         FakeRequest(
           "POST",
-          routes.MessagesController.post().url,
+          routes.MessagesController.post.url,
           Headers("channel" -> Api.name),
           NodeSeq.Empty
         )
