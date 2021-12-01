@@ -17,17 +17,15 @@
 package services
 
 import connectors.MessageConnector
-import models.ChannelType
+import models.{ChannelType, FailureMessage, MessageType, RoutingOption}
 import models.ChannelType.Api
-import models.FailureMessage
+import models.MessageType.DepartureDeclaration
 import models.ParseError._
-import models.RoutingOption
 import models.RoutingOption.Gb
 import models.RoutingOption.Xi
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.{eq => eqTo}
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.when
+import org.mockito.Mockito.{never, verify, when}
 import org.scalacheck.Gen
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.OptionValues
@@ -41,6 +39,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpResponse
 
 import scala.concurrent.Future
+import scala.xml.Elem
 
 class RoutingServiceSpec
     extends AnyFreeSpec
@@ -61,6 +60,7 @@ class RoutingServiceSpec
 
   val channelGen = Gen.oneOf(ChannelType.values)
   val routeGen   = Gen.oneOf(RoutingOption.values)
+  val messageTypeGen   = Gen.oneOf(MessageType.values.filterNot(msg => msg == DepartureDeclaration))
 
   "submitMessage" - {
 
@@ -167,6 +167,7 @@ class RoutingServiceSpec
         service(fsrc, mc).submitMessage(input, channel, hc)
 
         verify(mc).post(any(), eqTo(Gb), eqTo(hc))
+        verify(mc).postNCTSMonitoring(any(), any(), any())(any())
       }
     }
 
@@ -189,6 +190,33 @@ class RoutingServiceSpec
         val result = service(fsrc, mc).submitMessage(input, channel, hc)
 
         result mustBe a[Left[FailureMessage, _]]
+      }
+    }
+
+    "only submits the movement to NCTS monitoring if the message type is a departure declaration" in {
+
+      def nonDepartureXml(messageCode: String): Elem = {
+        scala.xml.XML.loadString(
+        s"""
+           |<TransitWrapper>
+           |   <$messageCode>
+           |      <CUSOFFPREOFFRES>
+           |         <RefNumRES1>XI12345</RefNumRES1>
+           |      </CUSOFFPREOFFRES>
+           |   </$messageCode>
+           |</TransitWrapper>""".stripMargin)
+      }
+
+      forAll(messageTypeGen, channelGen){ (messageType, channelType) =>
+        val mc = mock[MessageConnector]
+        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+        val fsrc = mock[RouteChecker]
+        when(fsrc.canForward(any(), any())).thenReturn(true)
+
+        service(fsrc, mc).submitMessage(nonDepartureXml(messageType.rootNode), channelType, hc)
+
+        verify(mc, never()).postNCTSMonitoring(any(), any(), any())(any())
       }
     }
 

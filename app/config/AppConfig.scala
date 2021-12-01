@@ -37,5 +37,7 @@ class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig
   val eisgbUrl: String = eisBaseUrl ++ config.get[String]("microservice.services.eis.gb.uri")
   val eisgbBearerToken: String =
     config.get[String]("microservice.services.eis.gb.headers.bearerToken")
+  val nctsBaseUrl: String = servicesConfig.baseUrl("ncts")
+  val nctsUrl: String = nctsBaseUrl ++ config.get[String]("microservice.services.ncts.uri")
 
 }
