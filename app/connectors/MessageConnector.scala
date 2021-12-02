@@ -37,6 +37,7 @@ import java.time.LocalDateTime
 import java.util.UUID
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
+import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 
 class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, http: HttpClient)(
@@ -71,18 +72,17 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
       .copy(authorization = None, otherHeaders = Seq.empty)
       .withExtraHeaders(requestHeaders: _*)
 
-    try {
       http
         .POSTString[HttpResponse](details.url, xml.toString)
         .map { result =>
           lazy val logMessage =
             s"""|Posting NCTS message, ${details.routingMessage}
                 |X-Correlation-Id: ${getHeader("X-Correlation-Id", details.url)}
-                |${HMRCHeaderNames.xRequestId}: ${getHeader(HMRCHeaderNames.xRequestId,  details.url)}
-                |X-Message-Type: ${getHeader("X-Message-Type",  details.url)}
-                |X-Message-Sender: ${getHeader("X-Message-Sender",  details.url)}
-                |Accept: ${getHeader("Accept",  details.url)}
-                |CustomProcessHost: ${getHeader("CustomProcessHost",  details.url)}
+                |${HMRCHeaderNames.xRequestId}: ${getHeader(HMRCHeaderNames.xRequestId, details.url)}
+                |X-Message-Type: ${getHeader("X-Message-Type", details.url)}
+                |X-Message-Sender: ${getHeader("X-Message-Sender", details.url)}
+                |Accept: ${getHeader("Accept", details.url)}
+                |CustomProcessHost: ${getHeader("CustomProcessHost", details.url)}
                 |Response status: ${result.status}
               """.stripMargin
 
@@ -93,30 +93,34 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
 
           result
         }
-    } catch {
-      case e: Exception =>
-        val message = s"${details.url} failed to retrieve data with message ${e.getMessage}"
-        logger.warn(message)
-        Future(HttpResponse(Status.INTERNAL_SERVER_ERROR, message))
+        .recover {
+          case NonFatal(e) =>
+            val message = s"${details.url} failed to retrieve data with message ${e.getMessage}"
+            logger.warn(message)
+            HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
+        }
     }
-  }
 
   def postNCTSMonitoring(messageCode: String, timestamp: LocalDateTime,
-                         routingOption: RoutingOption)(implicit hc: HeaderCarrier): Future[HttpResponse] = {
+                         routingOption: RoutingOption, hc: HeaderCarrier): Future[HttpResponse] = {
+
+    implicit val headerCarrier: HeaderCarrier = hc
 
     val movementJson: JsValue =
-      Json.toJson(Movement(getHeader("X-Message-Sender", appConfig.nctsUrl)(hc), messageCode, timestamp, routingOption.prefix))
+      Json.toJson(Movement(getHeader("X-Message-Sender", appConfig.nctsMonitoringUrl), messageCode, timestamp, routingOption.prefix))
 
-    try {
-      http.POSTString[HttpResponse](appConfig.nctsUrl, movementJson.toString()).map { result =>
+    http
+      .POSTString[HttpResponse](appConfig.nctsMonitoringUrl, movementJson.toString())
+      .map { result =>
         if (result.status != Status.OK)
           logger.warn(s"[MessageConnector][postNCTSMonitoring] Failed with status ${result.status}")
-          result
+        result
       }
-    } catch {
-      case e: Exception =>
-        logger.warn(s"${appConfig.nctsUrl} failed to send movement with message ${e.getMessage}")
-        Future(HttpResponse(Status.INTERNAL_SERVER_ERROR, e.getMessage))
-    }
+      .recover {
+        case NonFatal(e) =>
+          val message = s"${appConfig.nctsMonitoringUrl} failed to send movement to ncts monitoring with message ${e.getMessage}"
+          logger.warn(message)
+          HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
+      }
   }
 }

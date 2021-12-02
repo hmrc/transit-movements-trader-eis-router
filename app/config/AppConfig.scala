@@ -28,6 +28,7 @@ class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig
   val authBaseUrl: String = servicesConfig.baseUrl("auth")
 
   val auditingEnabled: Boolean = config.get[Boolean]("auditing.enabled")
+  val nctsMonitoringEnabled: Boolean = config.get[Boolean]("microservice.features.routing.ncts-monitoring")
   val graphiteHost: String     = config.get[String]("microservice.metrics.graphite.host")
 
   private val eisBaseUrl: String = servicesConfig.baseUrl("eis")
@@ -37,7 +38,7 @@ class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig
   val eisgbUrl: String = eisBaseUrl ++ config.get[String]("microservice.services.eis.gb.uri")
   val eisgbBearerToken: String =
     config.get[String]("microservice.services.eis.gb.headers.bearerToken")
-  val nctsBaseUrl: String = servicesConfig.baseUrl("ncts")
-  val nctsUrl: String = nctsBaseUrl ++ config.get[String]("microservice.services.ncts.uri")
+  val nctsMonitoringBaseUrl: String = servicesConfig.baseUrl("ncts-monitoring")
+  val nctsMonitoringUrl: String = nctsMonitoringBaseUrl ++ config.get[String]("microservice.services.ncts-monitoring.uri")
 
 }

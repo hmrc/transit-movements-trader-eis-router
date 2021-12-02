@@ -16,6 +16,7 @@
 
 package services
 
+import config.AppConfig
 import connectors.MessageConnector
 import models.{ChannelType, FailureMessage, MessageType, RoutingOption}
 import models.ChannelType.Api
@@ -53,8 +54,9 @@ class RoutingServiceSpec
 
   private def service(
     fsrc: RouteChecker = mock[RouteChecker],
-    messageConnector: MessageConnector = mock[MessageConnector]
-  ) = new RoutingService(fsrc, messageConnector)
+    messageConnector: MessageConnector = mock[MessageConnector],
+    appConfig: AppConfig = app.injector.instanceOf[AppConfig]
+  ) = new RoutingService(fsrc, messageConnector, appConfig)
 
   implicit val hc = HeaderCarrier()
 
@@ -167,7 +169,7 @@ class RoutingServiceSpec
         service(fsrc, mc).submitMessage(input, channel, hc)
 
         verify(mc).post(any(), eqTo(Gb), eqTo(hc))
-        verify(mc).postNCTSMonitoring(any(), any(), any())(any())
+        verify(mc).postNCTSMonitoring(any(), any(), any(), any())
       }
     }
 
@@ -216,7 +218,35 @@ class RoutingServiceSpec
 
         service(fsrc, mc).submitMessage(nonDepartureXml(messageType.rootNode), channelType, hc)
 
-        verify(mc, never()).postNCTSMonitoring(any(), any(), any())(any())
+        verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
+      }
+    }
+
+    "does not submit a movement to NCTS monitoring if the ncts-monitoring feature switch is disabled" in {
+
+      val input = <TransitWrapper>
+        <CC015B>
+          <CUSOFFDEPEPT>
+            <RefNumEPT1>GB12345</RefNumEPT1>
+          </CUSOFFDEPEPT>
+        </CC015B>
+      </TransitWrapper>
+
+      forAll(channelGen) { channel =>
+        val mc = mock[MessageConnector]
+        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+        val fsrc = mock[RouteChecker]
+        when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
+
+        val mockAppConfig: AppConfig = mock[AppConfig]
+
+        when(mockAppConfig.nctsMonitoringEnabled).thenReturn(false)
+
+        service(fsrc, mc, mockAppConfig).submitMessage(input, channel, hc)
+
+        verify(mc).post(any(), eqTo(Gb), eqTo(hc))
+        verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
       }
     }
 

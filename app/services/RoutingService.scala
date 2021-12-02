@@ -17,8 +17,9 @@
 package services
 
 import com.google.inject.Inject
+import config.AppConfig
 import connectors.MessageConnector
-import models.MessageType.{DeclarationCancellationRequest, DepartureDeclaration}
+import models.MessageType.DepartureDeclaration
 import models.ParseError.InvalidMessageCode
 import models._
 import play.api.Logging
@@ -28,7 +29,7 @@ import java.time.LocalDateTime
 import scala.concurrent.Future
 import scala.xml.NodeSeq
 
-class RoutingService @Inject() (routeChecker: RouteChecker, messageConnector: MessageConnector)
+class RoutingService @Inject() (routeChecker: RouteChecker, messageConnector: MessageConnector, appConfig: AppConfig)
     extends Logging {
 
   def submitMessage(
@@ -88,8 +89,8 @@ class RoutingService @Inject() (routeChecker: RouteChecker, messageConnector: Me
 
               val resp = messageConnector.post(xml, routingOption, headerCarrier)
 
-              if (isDepartureDeclaration) {
-                messageConnector.postNCTSMonitoring(messageType.code, LocalDateTime.now, routingOption)(headerCarrier)
+              if (isDepartureDeclaration && appConfig.nctsMonitoringEnabled) {
+                messageConnector.postNCTSMonitoring(messageType.code, LocalDateTime.now, routingOption, headerCarrier)
               }
 
               resp

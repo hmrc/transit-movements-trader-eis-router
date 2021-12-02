@@ -38,7 +38,7 @@ trait WiremockSuite extends BeforeAndAfterAll with BeforeAndAfterEach {
     new GuiceApplicationBuilder()
       .configure(
         "microservice.services.eis.port" -> server.port().toString,
-        "microservice.services.ncts.port" -> server.port().toString
+        "microservice.services.ncts-monitoring.port" -> server.port().toString
       )
       .overrides(bindings: _*)
 
