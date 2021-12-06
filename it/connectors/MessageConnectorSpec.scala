@@ -33,8 +33,9 @@ import play.api.http.{HeaderNames, MimeTypes}
 import play.api.test.Helpers._
 import uk.gov.hmrc.http.{HeaderCarrier, HttpClient}
 
+import java.time.{LocalDateTime, ZoneOffset}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future._
+import scala.concurrent.Future.failed
 
 class MessageConnectorSpec
     extends AnyWordSpec
@@ -44,6 +45,7 @@ class MessageConnectorSpec
     with MockitoSugar
     with IntegrationPatience
     with ScalaCheckPropertyChecks {
+
   "post" should {
 
     "add CustomProcessHost and X-Correlation-Id headers to messages for GB" in {
@@ -166,7 +168,7 @@ class MessageConnectorSpec
       }
     }
 
-     "handle exceptions by returning an HttpResponse with status code 500" in {
+    "handle exceptions by returning an HttpResponse with status code 500" in {
       val app = appBuilder.build()
 
       running(app) {
@@ -183,9 +185,81 @@ class MessageConnectorSpec
         result.futureValue.status mustEqual INTERNAL_SERVER_ERROR
       }
     }
-
-
   }
 
-  override protected def portConfigKey: String = "microservice.services.eis.port"
+  "postNCTSMonitoring" should {
+
+    "return 200 when post is successful" in {
+
+      val app = appBuilder.build()
+
+      running(app) {
+        val connector = app.injector.instanceOf[MessageConnector]
+
+        server.stubFor(post(urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departure-notification")).willReturn(aResponse()))
+
+        val result = connector.postNCTSMonitoring(
+          "TEST-ID",
+          LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
+          Gb,
+          HeaderCarrier()).futureValue
+
+        result.status mustEqual OK
+      }
+    }
+
+    val errorCodes = Gen.oneOf(
+      Seq(
+        BAD_REQUEST,
+        FORBIDDEN,
+        INTERNAL_SERVER_ERROR,
+        BAD_GATEWAY,
+        GATEWAY_TIMEOUT
+      )
+    )
+
+    "pass through error status codes" in forAll(errorCodes) { statusCode =>
+      val app = appBuilder.build()
+
+      running(app) {
+        val connector = app.injector.instanceOf[MessageConnector]
+
+        server.stubFor(
+          post(
+            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departure-notification")
+          ).willReturn(aResponse().withStatus(statusCode))
+        )
+
+        val result = connector.postNCTSMonitoring(
+          "TEST-ID",
+          LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
+          Gb,
+          HeaderCarrier()).futureValue
+
+        result.status mustEqual statusCode
+      }
+    }
+
+    "handle exceptions by returning an HttpResponse with status code 500" in {
+      val app = appBuilder.build()
+
+      running(app) {
+        val appConfig = app.injector.instanceOf[AppConfig]
+        val config = app.injector.instanceOf[Configuration]
+        val http = mock[HttpClient]
+
+        when(http.POSTString(any(), any(), any())(any(), any(), any())).thenReturn(failed(new RuntimeException("Simulated timeout")))
+
+        val connector = new MessageConnector(appConfig, config, http)
+        val result = connector.postNCTSMonitoring(
+          "TEST-ID",
+          LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
+          Gb,
+          HeaderCarrier()).futureValue
+
+        result.status mustEqual INTERNAL_SERVER_ERROR
+      }
+    }
+
+  }
 }
