@@ -20,7 +20,7 @@ import config.AppConfig
 import connectors.MessageConnector
 import models.{ChannelType, FailureMessage, MessageType, RoutingOption}
 import models.ChannelType.Api
-import models.MessageType.DepartureDeclaration
+import models.MessageType.{ArrivalNotification, DepartureDeclaration}
 import models.ParseError._
 import models.RoutingOption.Gb
 import models.RoutingOption.Xi
@@ -62,7 +62,7 @@ class RoutingServiceSpec
 
   val channelGen = Gen.oneOf(ChannelType.values)
   val routeGen   = Gen.oneOf(RoutingOption.values)
-  val messageTypeGen   = Gen.oneOf(MessageType.values.filterNot(msg => msg == DepartureDeclaration))
+  val messageTypeGen   = Gen.oneOf(MessageType.values.filterNot(msg => msg == DepartureDeclaration | msg == ArrivalNotification))
 
   "submitMessage" - {
 
@@ -195,7 +195,7 @@ class RoutingServiceSpec
       }
     }
 
-    "only submits the movement to NCTS monitoring if the message type is a departure declaration" in {
+    "never submits movement to NCTS monitoring if message type is not DepartureDeclaration or ArrivalNotification" in {
 
       def nonDepartureXml(messageCode: String): Elem = {
         scala.xml.XML.loadString(
@@ -268,6 +268,7 @@ class RoutingServiceSpec
 
         service(fsrc, mc).submitMessage(input, channel, hc)
 
+        verify(mc).postNCTSMonitoring(any(), any(), any(), any())
         verify(mc).post(any(), eqTo(Xi), eqTo(hc))
       }
     }
@@ -312,6 +313,7 @@ class RoutingServiceSpec
 
         service(fsrc, mc).submitMessage(input, channel, hc)
 
+        verify(mc).postNCTSMonitoring(any(), any(), any(), any())
         verify(mc).post(any(), eqTo(Gb), eqTo(hc))
       }
     }
@@ -356,6 +358,7 @@ class RoutingServiceSpec
 
         service(fsrc, mc).submitMessage(input, channel, hc)
 
+        verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
         verify(mc).post(any(), eqTo(Xi), eqTo(hc))
       }
     }
@@ -400,6 +403,7 @@ class RoutingServiceSpec
 
         service(fsrc, mc).submitMessage(input, channel, hc)
 
+        verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
         verify(mc).post(any(), eqTo(Gb), eqTo(hc))
       }
     }
