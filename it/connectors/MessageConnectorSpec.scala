@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 HM Revenue & Customs
+ * Copyright 2022 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,14 +31,15 @@ import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import play.api.Configuration
 import play.api.http.{HeaderNames, MimeTypes}
 import play.api.test.Helpers._
-import uk.gov.hmrc.http.{HeaderCarrier, HttpClient}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpClient, HttpReads, HttpResponse}
 
 import java.time.{LocalDateTime, ZoneOffset}
+import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future.failed
 
 class MessageConnectorSpec
-    extends AnyWordSpec
+  extends AnyWordSpec
     with Matchers
     with WiremockSuite
     with ScalaFutures
@@ -176,7 +177,13 @@ class MessageConnectorSpec
         val config = app.injector.instanceOf[Configuration]
         val http = mock[HttpClient]
 
-        when(http.POSTString(any(), any(), any())(any(), any(), any())).thenReturn(failed(new RuntimeException("Simulated timeout")))
+        when(
+          http.POSTString(
+            any(): String, any(): String, any(): Seq[(String, String)]
+          )(
+            any(): HttpReads[HttpResponse], any(): HeaderCarrier, any(): ExecutionContext
+          )
+        ).thenReturn(failed(new RuntimeException("Simulated timeout")))
 
         val connector = new MessageConnector(appConfig, config, http)
         val hc = HeaderCarrier()
@@ -248,7 +255,13 @@ class MessageConnectorSpec
         val config = app.injector.instanceOf[Configuration]
         val http = mock[HttpClient]
 
-        when(http.POSTString(any(), any(), any())(any(), any(), any())).thenReturn(failed(new RuntimeException("Simulated timeout")))
+        when(
+          http.POSTString(
+            any(): String, any(): String, any(): Seq[(String, String)]
+          )(
+            any(): HttpReads[HttpResponse], any(): HeaderCarrier, any(): ExecutionContext
+          )
+        ).thenReturn(failed(new RuntimeException("Simulated timeout")))
 
         val connector = new MessageConnector(appConfig, config, http)
         val result = connector.postNCTSMonitoring(

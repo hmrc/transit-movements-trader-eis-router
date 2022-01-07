@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 HM Revenue & Customs
+ * Copyright 2022 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@
 package controllers
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import akka.stream.Materializer
 import controllers.actions.ChannelAction
 import models.ChannelType.Api
 import models.ParseError.InvalidMessageCode
@@ -29,14 +27,11 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
-import play.api.http.HeaderNames
-import play.api.http.MimeTypes
+import play.api.http.{HeaderNames, MimeTypes}
 import play.api.libs.json.Json
 import play.api.mvc.AnyContentAsXml
-import play.api.test.FakeHeaders
-import play.api.test.FakeRequest
-import play.api.test.Helpers
 import play.api.test.Helpers._
+import play.api.test.{FakeHeaders, FakeRequest, Helpers}
 import services.RoutingService
 import uk.gov.hmrc.http.HttpResponse
 
@@ -104,8 +99,6 @@ class MessagesControllerSpec
   )
 
   implicit val system: ActorSystem = ActorSystem("MessagesControllerSpec")
-
-  implicit def mat: Materializer = ActorMaterializer()
 
   private def controller(routingService: RoutingService = mock[RoutingService]) =
     new MessagesController(
