@@ -203,7 +203,7 @@ class MessageConnectorSpec
       running(app) {
         val connector = app.injector.instanceOf[MessageConnector]
 
-        server.stubFor(post(urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departure-notification")).willReturn(aResponse()))
+        server.stubFor(post(urlEqualTo("/ncts/movement-notification")).willReturn(aResponse()))
 
         val result = connector.postNCTSMonitoring(
           "TEST-ID",
@@ -233,7 +233,7 @@ class MessageConnectorSpec
 
         server.stubFor(
           post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departure-notification")
+            urlEqualTo("/ncts/movement-notification")
           ).willReturn(aResponse().withStatus(statusCode))
         )
 
