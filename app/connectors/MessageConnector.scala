@@ -16,9 +16,13 @@
 
 package connectors
 
+import akka.pattern.CircuitBreaker
+import akka.stream.Materializer
 import com.google.inject.Inject
 import config.AppConfig
-import models.{Movement, RoutingOption}
+import config.CircuitBreakerConfig
+import models.Movement
+import models.RoutingOption
 import models.RoutingOption.Gb
 import models.RoutingOption.Xi
 import play.api.Configuration
@@ -26,7 +30,8 @@ import play.api.Logging
 import play.api.http.HeaderNames
 import play.api.http.MimeTypes
 import play.api.http.Status
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.JsValue
+import play.api.libs.json.Json
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads.Implicits._
@@ -38,13 +43,17 @@ import java.util.UUID
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.util.control.NonFatal
+import scala.util.Success
+import scala.util.Try
 import scala.xml.NodeSeq
 
 class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, http: HttpClient)(
-  implicit ec: ExecutionContext
-) extends Logging {
+  implicit ec: ExecutionContext, val materializer: Materializer
+) extends CircuitBreakers with Logging {
 
-  private case class EisDetails(url: String, token: String, routingMessage: String)
+  private case class EisDetails(url: String, token: String, routingMessage: String, circuitBreaker: CircuitBreaker)
+  private lazy val niEisDetails = EisDetails(appConfig.eisniUrl, appConfig.eisniBearerToken, "routing to NI", niCircuitBreaker)
+  private lazy val gbEisDetails = EisDetails(appConfig.eisgbUrl, appConfig.eisgbBearerToken, "routing to GB", gbCircuitBreaker)
 
   private val headerCarrierConfig = HeaderCarrier.Config.fromConfig(config.underlying)
 
@@ -55,50 +64,67 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
       .map { case (_, value) => value }
       .getOrElse("undefined")
 
-  def post(xml: NodeSeq, routingOption: RoutingOption, hc: HeaderCarrier): Future[HttpResponse] = {
-    val details = routingOption match {
-      case Xi => EisDetails(appConfig.eisniUrl, appConfig.eisniBearerToken, "routing to NI")
-      case Gb => EisDetails(appConfig.eisgbUrl, appConfig.eisgbBearerToken, "routing to GB")
+  override lazy val gbCircuitBreakerConfig: CircuitBreakerConfig = appConfig.eisgbCircuitBreaker
+  override lazy val niCircuitBreakerConfig: CircuitBreakerConfig = appConfig.eisniCircuitBreaker
+
+  private def statusCodeFailure(response: HttpResponse): Boolean =
+    Status.isServerError(response.status) || response.status == Status.FORBIDDEN
+
+  def isFailure[A](result: Try[HttpResponse]): Boolean =
+    result match {
+      case Success(response) if !statusCodeFailure(response) => false
+      case _                                                 => true
     }
 
-    val requestHeaders = hc.headers(OutgoingHeaders.headers) ++ Seq(
-      "X-Correlation-Id" -> UUID.randomUUID().toString,
-      "CustomProcessHost" -> "Digital",
-      HeaderNames.ACCEPT -> MimeTypes.XML, // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
-      HeaderNames.AUTHORIZATION -> s"Bearer ${details.token}"
-    )
+  def post(xml: NodeSeq, routingOption: RoutingOption, hc: HeaderCarrier): Future[HttpResponse] = {
+    val details = routingOption match {
+      case Xi => niEisDetails
+      case Gb => gbEisDetails
+    }
 
-    implicit val headerCarrier = hc
-      .copy(authorization = None, otherHeaders = Seq.empty)
-      .withExtraHeaders(requestHeaders: _*)
+    details.circuitBreaker.withCircuitBreaker(
+      {
+        val requestHeaders = hc.headers(OutgoingHeaders.headers) ++ Seq(
+          "X-Correlation-Id" -> UUID.randomUUID().toString,
+          "CustomProcessHost" -> "Digital",
+          HeaderNames.ACCEPT -> MimeTypes.XML, // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
+          HeaderNames.AUTHORIZATION -> s"Bearer ${details.token}"
+        )
 
-      http
-        .POSTString[HttpResponse](details.url, xml.toString)
-        .map { result =>
-          lazy val logMessage =
-            s"""|Posting NCTS message, ${details.routingMessage}
-                |X-Correlation-Id: ${getHeader("X-Correlation-Id", details.url)}
-                |${HMRCHeaderNames.xRequestId}: ${getHeader(HMRCHeaderNames.xRequestId, details.url)}
-                |X-Message-Type: ${getHeader("X-Message-Type", details.url)}
-                |X-Message-Sender: ${getHeader("X-Message-Sender", details.url)}
-                |Accept: ${getHeader("Accept", details.url)}
-                |CustomProcessHost: ${getHeader("CustomProcessHost", details.url)}
-                |Response status: ${result.status}
-              """.stripMargin
+        implicit val headerCarrier = hc
+          .copy(authorization = None, otherHeaders = Seq.empty)
+          .withExtraHeaders(requestHeaders: _*)
 
-          if (Status.isServerError(result.status) || result.status == Status.FORBIDDEN)
-            logger.warn(logMessage)
-          else
-            logger.info(logMessage)
+          http
+            .POSTString[HttpResponse](details.url, xml.toString)
+            .map { result =>
+              lazy val logMessage =
+                s"""|Posting NCTS message, ${details.routingMessage}
+                    |X-Correlation-Id: ${getHeader("X-Correlation-Id", details.url)}
+                    |${HMRCHeaderNames.xRequestId}: ${getHeader(HMRCHeaderNames.xRequestId, details.url)}
+                    |X-Message-Type: ${getHeader("X-Message-Type", details.url)}
+                    |X-Message-Sender: ${getHeader("X-Message-Sender", details.url)}
+                    |Accept: ${getHeader("Accept", details.url)}
+                    |CustomProcessHost: ${getHeader("CustomProcessHost", details.url)}
+                    |Response status: ${result.status}
+                  """.stripMargin
 
-          result
-        }
-        .recover {
-          case NonFatal(e) =>
-            val message = s"${details.url} failed to retrieve data with message ${e.getMessage}"
-            logger.warn(message)
-            HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
-        }
+              if (statusCodeFailure(result))
+                logger.warn(logMessage)
+              else
+                logger.info(logMessage)
+
+              result
+            }
+            .recover {
+              case NonFatal(e) =>
+                val message = s"${details.url} failed to retrieve data with message ${e.getMessage}"
+                logger.warn(message)
+                HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
+            }
+          },
+          isFailure
+        )
     }
 
   def postNCTSMonitoring(messageCode: String, timestamp: LocalDateTime,

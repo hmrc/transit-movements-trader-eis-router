@@ -41,4 +41,8 @@ class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig
   val nctsMonitoringBaseUrl: String = servicesConfig.baseUrl("ncts-monitoring")
   val nctsMonitoringUrl: String = nctsMonitoringBaseUrl ++ config.get[String]("microservice.services.ncts-monitoring.uri")
 
+  val eisgbCircuitBreaker: CircuitBreakerConfig =
+    CircuitBreakerConfig.fromServicesConfig("eis.gb", config)
+  val eisniCircuitBreaker: CircuitBreakerConfig =
+    CircuitBreakerConfig.fromServicesConfig("eis.ni", config)
 }
