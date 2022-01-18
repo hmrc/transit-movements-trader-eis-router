@@ -39,7 +39,7 @@ object XmlParser {
   def guaranteeReference(xml: NodeSeq): ParseHandler[GuaranteeReference] =
     (xml \\ "GUAREF2" \ "GuaRefNumGRNREF21").text match {
       case grn if grn.isEmpty => Left(GuaranteeReferenceEmpty("Guarantee Reference Empty"))
-      case grn => Right(GuaranteeReference(grn))
+      case grn                => Right(GuaranteeReference(grn))
     }
 
   def officeOfDeparture(xml: NodeSeq): ParseHandler[DepartureOffice] =

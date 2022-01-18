@@ -48,12 +48,22 @@ import scala.util.Try
 import scala.xml.NodeSeq
 
 class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, http: HttpClient)(
-  implicit ec: ExecutionContext, val materializer: Materializer
-) extends CircuitBreakers with Logging {
+  implicit
+  ec: ExecutionContext,
+  val materializer: Materializer
+) extends CircuitBreakers
+    with Logging {
 
-  private case class EisDetails(url: String, token: String, routingMessage: String, circuitBreaker: CircuitBreaker)
-  private lazy val niEisDetails = EisDetails(appConfig.eisniUrl, appConfig.eisniBearerToken, "routing to NI", niCircuitBreaker)
-  private lazy val gbEisDetails = EisDetails(appConfig.eisgbUrl, appConfig.eisgbBearerToken, "routing to GB", gbCircuitBreaker)
+  private case class EisDetails(
+    url: String,
+    token: String,
+    routingMessage: String,
+    circuitBreaker: CircuitBreaker
+  )
+  private lazy val niEisDetails =
+    EisDetails(appConfig.eisniUrl, appConfig.eisniBearerToken, "routing to NI", niCircuitBreaker)
+  private lazy val gbEisDetails =
+    EisDetails(appConfig.eisgbUrl, appConfig.eisgbBearerToken, "routing to GB", gbCircuitBreaker)
 
   private val headerCarrierConfig = HeaderCarrier.Config.fromConfig(config.underlying)
 
@@ -85,9 +95,9 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
     details.circuitBreaker.withCircuitBreaker(
       {
         val requestHeaders = hc.headers(OutgoingHeaders.headers) ++ Seq(
-          "X-Correlation-Id" -> UUID.randomUUID().toString,
-          "CustomProcessHost" -> "Digital",
-          HeaderNames.ACCEPT -> MimeTypes.XML, // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
+          "X-Correlation-Id"        -> UUID.randomUUID().toString,
+          "CustomProcessHost"       -> "Digital",
+          HeaderNames.ACCEPT        -> MimeTypes.XML, // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
           HeaderNames.AUTHORIZATION -> s"Bearer ${details.token}"
         )
 
@@ -95,13 +105,16 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
           .copy(authorization = None, otherHeaders = Seq.empty)
           .withExtraHeaders(requestHeaders: _*)
 
-          http
-            .POSTString[HttpResponse](details.url, xml.toString)
-            .map { result =>
-              lazy val logMessage =
-                s"""|Posting NCTS message, ${details.routingMessage}
+        http
+          .POSTString[HttpResponse](details.url, xml.toString)
+          .map { result =>
+            lazy val logMessage =
+              s"""|Posting NCTS message, ${details.routingMessage}
                     |X-Correlation-Id: ${getHeader("X-Correlation-Id", details.url)}
-                    |${HMRCHeaderNames.xRequestId}: ${getHeader(HMRCHeaderNames.xRequestId, details.url)}
+                    |${HMRCHeaderNames.xRequestId}: ${getHeader(
+                HMRCHeaderNames.xRequestId,
+                details.url
+              )}
                     |X-Message-Type: ${getHeader("X-Message-Type", details.url)}
                     |X-Message-Sender: ${getHeader("X-Message-Sender", details.url)}
                     |Accept: ${getHeader("Accept", details.url)}
@@ -109,31 +122,41 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
                     |Response status: ${result.status}
                   """.stripMargin
 
-              if (statusCodeFailure(result))
-                logger.warn(logMessage)
-              else
-                logger.info(logMessage)
+            if (statusCodeFailure(result))
+              logger.warn(logMessage)
+            else
+              logger.info(logMessage)
 
-              result
-            }
-            .recover {
-              case NonFatal(e) =>
-                val message = s"${details.url} failed to retrieve data with message ${e.getMessage}"
-                logger.warn(message)
-                HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
-            }
-          },
-          isFailure
-        )
-    }
+            result
+          }
+          .recover { case NonFatal(e) =>
+            val message = s"${details.url} failed to retrieve data with message ${e.getMessage}"
+            logger.warn(message)
+            HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
+          }
+      },
+      isFailure
+    )
+  }
 
-  def postNCTSMonitoring(messageCode: String, timestamp: LocalDateTime,
-                         routingOption: RoutingOption, hc: HeaderCarrier): Future[HttpResponse] = {
+  def postNCTSMonitoring(
+    messageCode: String,
+    timestamp: LocalDateTime,
+    routingOption: RoutingOption,
+    hc: HeaderCarrier
+  ): Future[HttpResponse] = {
 
     implicit val headerCarrier: HeaderCarrier = hc
 
     val movementJson: JsValue =
-      Json.toJson(Movement(getHeader("X-Message-Sender", appConfig.nctsMonitoringUrl), messageCode, timestamp, routingOption.prefix))
+      Json.toJson(
+        Movement(
+          getHeader("X-Message-Sender", appConfig.nctsMonitoringUrl),
+          messageCode,
+          timestamp,
+          routingOption.prefix
+        )
+      )
 
     http
       .POSTString[HttpResponse](appConfig.nctsMonitoringUrl, movementJson.toString())
@@ -142,11 +165,11 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
           logger.warn(s"[MessageConnector][postNCTSMonitoring] Failed with status ${result.status}")
         result
       }
-      .recover {
-        case NonFatal(e) =>
-          val message = s"${appConfig.nctsMonitoringUrl} failed to send movement to ncts monitoring with message ${e.getMessage}"
-          logger.warn(message)
-          HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
+      .recover { case NonFatal(e) =>
+        val message =
+          s"${appConfig.nctsMonitoringUrl} failed to send movement to ncts monitoring with message ${e.getMessage}"
+        logger.warn(message)
+        HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
       }
   }
 }

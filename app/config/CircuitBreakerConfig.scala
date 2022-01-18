@@ -21,12 +21,12 @@ import play.api.Configuration
 import scala.concurrent.duration.FiniteDuration
 
 case class CircuitBreakerConfig(
-    maxFailures: Int,
-    callTimeout: FiniteDuration,
-    resetTimeout: FiniteDuration,
-    maxResetTimeout: FiniteDuration,
-    exponentialBackoffFactor: Double,
-    randomFactor: Double
+  maxFailures: Int,
+  callTimeout: FiniteDuration,
+  resetTimeout: FiniteDuration,
+  maxResetTimeout: FiniteDuration,
+  exponentialBackoffFactor: Double,
+  randomFactor: Double
 )
 
 object CircuitBreakerConfig {

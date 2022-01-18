@@ -29,21 +29,23 @@ import java.time.LocalDateTime
 import scala.concurrent.Future
 import scala.xml.NodeSeq
 
-class RoutingService @Inject() (routeChecker: RouteChecker, messageConnector: MessageConnector, appConfig: AppConfig)
-    extends Logging {
+class RoutingService @Inject() (
+  routeChecker: RouteChecker,
+  messageConnector: MessageConnector,
+  appConfig: AppConfig
+) extends Logging {
 
   def submitMessage(
-                     xml: NodeSeq,
-                     channel: ChannelType,
-                     headerCarrier: HeaderCarrier
-                   ): Either[FailureMessage, Future[HttpResponse]] = {
+    xml: NodeSeq,
+    channel: ChannelType,
+    headerCarrier: HeaderCarrier
+  ): Either[FailureMessage, Future[HttpResponse]] = {
     XmlParser.getValidRoot(xml) match {
       case None =>
         Left(InvalidMessageCode(s"Invalid Message Type"))
 
       case Some(XmlParser.RootNode(messageType, rootXml))
           if MessageType.guaranteeValues.contains(messageType) =>
-
         val parseGrn: Either[ParseError, GuaranteeReference] =
           XmlParser.guaranteeReference(rootXml)
 
@@ -86,7 +88,12 @@ class RoutingService @Inject() (routeChecker: RouteChecker, messageConnector: Me
               val resp = messageConnector.post(xml, routingOption, headerCarrier)
 
               if (sendToNCTS && appConfig.nctsMonitoringEnabled) {
-                messageConnector.postNCTSMonitoring(messageType.code, LocalDateTime.now, routingOption, headerCarrier)
+                messageConnector.postNCTSMonitoring(
+                  messageType.code,
+                  LocalDateTime.now,
+                  routingOption,
+                  headerCarrier
+                )
               }
 
               resp

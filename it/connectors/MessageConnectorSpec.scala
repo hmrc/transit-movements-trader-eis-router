@@ -16,6 +16,7 @@
 
 package connectors
 
+import akka.stream.Materializer
 import com.github.tomakehurst.wiremock.client.WireMock._
 import config.AppConfig
 import models.RoutingOption
@@ -39,7 +40,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future.failed
 
 class MessageConnectorSpec
-  extends AnyWordSpec
+    extends AnyWordSpec
     with Matchers
     with WiremockSuite
     with ScalaFutures
@@ -173,21 +174,26 @@ class MessageConnectorSpec
       val app = appBuilder.build()
 
       running(app) {
-        val appConfig = app.injector.instanceOf[AppConfig]
-        val config = app.injector.instanceOf[Configuration]
-        val http = mock[HttpClient]
+        implicit val materializer = app.injector.instanceOf[Materializer]
+        val appConfig             = app.injector.instanceOf[AppConfig]
+        val config                = app.injector.instanceOf[Configuration]
+        val http                  = mock[HttpClient]
 
         when(
           http.POSTString(
-            any(): String, any(): String, any(): Seq[(String, String)]
+            any(): String,
+            any(): String,
+            any(): Seq[(String, String)]
           )(
-            any(): HttpReads[HttpResponse], any(): HeaderCarrier, any(): ExecutionContext
+            any(): HttpReads[HttpResponse],
+            any(): HeaderCarrier,
+            any(): ExecutionContext
           )
         ).thenReturn(failed(new RuntimeException("Simulated timeout")))
 
         val connector = new MessageConnector(appConfig, config, http)
-        val hc = HeaderCarrier()
-        val result = connector.post(<document></document>, Gb, hc)
+        val hc        = HeaderCarrier()
+        val result    = connector.post(<document></document>, Gb, hc)
 
         result.futureValue.status mustEqual INTERNAL_SERVER_ERROR
       }
@@ -205,11 +211,14 @@ class MessageConnectorSpec
 
         server.stubFor(post(urlEqualTo("/ncts/movement-notification")).willReturn(aResponse()))
 
-        val result = connector.postNCTSMonitoring(
-          "TEST-ID",
-          LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
-          Gb,
-          HeaderCarrier()).futureValue
+        val result = connector
+          .postNCTSMonitoring(
+            "TEST-ID",
+            LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
+            Gb,
+            HeaderCarrier()
+          )
+          .futureValue
 
         result.status mustEqual OK
       }
@@ -237,11 +246,14 @@ class MessageConnectorSpec
           ).willReturn(aResponse().withStatus(statusCode))
         )
 
-        val result = connector.postNCTSMonitoring(
-          "TEST-ID",
-          LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
-          Gb,
-          HeaderCarrier()).futureValue
+        val result = connector
+          .postNCTSMonitoring(
+            "TEST-ID",
+            LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
+            Gb,
+            HeaderCarrier()
+          )
+          .futureValue
 
         result.status mustEqual statusCode
       }
@@ -251,24 +263,32 @@ class MessageConnectorSpec
       val app = appBuilder.build()
 
       running(app) {
-        val appConfig = app.injector.instanceOf[AppConfig]
-        val config = app.injector.instanceOf[Configuration]
-        val http = mock[HttpClient]
+        implicit val materializer = app.injector.instanceOf[Materializer]
+        val appConfig             = app.injector.instanceOf[AppConfig]
+        val config                = app.injector.instanceOf[Configuration]
+        val http                  = mock[HttpClient]
 
         when(
           http.POSTString(
-            any(): String, any(): String, any(): Seq[(String, String)]
+            any(): String,
+            any(): String,
+            any(): Seq[(String, String)]
           )(
-            any(): HttpReads[HttpResponse], any(): HeaderCarrier, any(): ExecutionContext
+            any(): HttpReads[HttpResponse],
+            any(): HeaderCarrier,
+            any(): ExecutionContext
           )
         ).thenReturn(failed(new RuntimeException("Simulated timeout")))
 
         val connector = new MessageConnector(appConfig, config, http)
-        val result = connector.postNCTSMonitoring(
-          "TEST-ID",
-          LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
-          Gb,
-          HeaderCarrier()).futureValue
+        val result = connector
+          .postNCTSMonitoring(
+            "TEST-ID",
+            LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
+            Gb,
+            HeaderCarrier()
+          )
+          .futureValue
 
         result.status mustEqual INTERNAL_SERVER_ERROR
       }

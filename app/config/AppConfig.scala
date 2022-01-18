@@ -28,8 +28,9 @@ class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig
   val authBaseUrl: String = servicesConfig.baseUrl("auth")
 
   val auditingEnabled: Boolean = config.get[Boolean]("auditing.enabled")
-  val nctsMonitoringEnabled: Boolean = config.get[Boolean]("microservice.features.routing.ncts-monitoring")
-  val graphiteHost: String     = config.get[String]("microservice.metrics.graphite.host")
+  val nctsMonitoringEnabled: Boolean =
+    config.get[Boolean]("microservice.features.routing.ncts-monitoring")
+  val graphiteHost: String = config.get[String]("microservice.metrics.graphite.host")
 
   private val eisBaseUrl: String = servicesConfig.baseUrl("eis")
   val eisniUrl: String           = eisBaseUrl ++ config.get[String]("microservice.services.eis.ni.uri")
@@ -39,7 +40,8 @@ class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig
   val eisgbBearerToken: String =
     config.get[String]("microservice.services.eis.gb.headers.bearerToken")
   val nctsMonitoringBaseUrl: String = servicesConfig.baseUrl("ncts-monitoring")
-  val nctsMonitoringUrl: String = nctsMonitoringBaseUrl ++ config.get[String]("microservice.services.ncts-monitoring.uri")
+  val nctsMonitoringUrl: String =
+    nctsMonitoringBaseUrl ++ config.get[String]("microservice.services.ncts-monitoring.uri")
 
   val eisgbCircuitBreaker: CircuitBreakerConfig =
     CircuitBreakerConfig.fromServicesConfig("eis.gb", config)

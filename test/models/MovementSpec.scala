@@ -25,10 +25,18 @@ import java.time.{LocalDateTime, ZoneOffset}
 class MovementSpec extends AnyFreeSpec with Matchers {
 
   val movement: Movement = Movement(
-    "TEST-ID", "IE015", LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC), "GB"
+    "TEST-ID",
+    "IE015",
+    LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
+    "GB"
   )
 
-  val movementJson: JsValue = Json.obj("id" -> "TEST-ID", "messageCode" -> "IE015", "timestamp" -> "2021-12-01T08:58:46", "office" -> "GB")
+  val movementJson: JsValue = Json.obj(
+    "id"          -> "TEST-ID",
+    "messageCode" -> "IE015",
+    "timestamp"   -> "2021-12-01T08:58:46",
+    "office"      -> "GB"
+  )
 
   "Movement" - {
     "must convert from Model to Json" in {

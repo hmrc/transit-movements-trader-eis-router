@@ -62,7 +62,9 @@ class RoutingServiceSpec
 
   val channelGen = Gen.oneOf(ChannelType.values)
   val routeGen   = Gen.oneOf(RoutingOption.values)
-  val messageTypeGen   = Gen.oneOf(MessageType.values.filterNot(msg => msg == DepartureDeclaration | msg == ArrivalNotification))
+  val messageTypeGen = Gen.oneOf(
+    MessageType.values.filterNot(msg => msg == DepartureDeclaration | msg == ArrivalNotification)
+  )
 
   "submitMessage" - {
 
@@ -198,8 +200,7 @@ class RoutingServiceSpec
     "never submits movement to NCTS monitoring if message type is not DepartureDeclaration or ArrivalNotification" in {
 
       def nonDepartureXml(messageCode: String): Elem = {
-        scala.xml.XML.loadString(
-        s"""
+        scala.xml.XML.loadString(s"""
            |<TransitWrapper>
            |   <$messageCode>
            |      <CUSOFFPREOFFRES>
@@ -209,7 +210,7 @@ class RoutingServiceSpec
            |</TransitWrapper>""".stripMargin)
       }
 
-      forAll(messageTypeGen, channelGen){ (messageType, channelType) =>
+      forAll(messageTypeGen, channelGen) { (messageType, channelType) =>
         val mc = mock[MessageConnector]
         when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
