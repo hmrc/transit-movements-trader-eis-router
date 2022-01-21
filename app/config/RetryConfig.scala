@@ -26,13 +26,13 @@ object RetryConfig {
   def fromServicesConfig(serviceName: String, config: Configuration) =
     RetryConfig(
       config.get[Int](
-        s"microservice.services.$serviceName.circuit-breaker.max-retries"
+        s"microservice.services.$serviceName.retry.max-retries"
       ),
       config.get[FiniteDuration](
-        s"microservice.services.$serviceName.circuit-breaker.delay-between-retries"
+        s"microservice.services.$serviceName.retry.delay-between-retries"
       ),
       config.get[FiniteDuration](
-        s"microservice.services.$serviceName.circuit-breaker.timeout"
+        s"microservice.services.$serviceName.retry.timeout"
       )
     )
 }
