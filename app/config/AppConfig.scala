@@ -47,4 +47,9 @@ class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig
     CircuitBreakerConfig.fromServicesConfig("eis.gb", config)
   val eisniCircuitBreaker: CircuitBreakerConfig =
     CircuitBreakerConfig.fromServicesConfig("eis.ni", config)
+
+  val eisgbRetry: RetryConfig =
+    RetryConfig.fromServicesConfig("eis.gb", config)
+  val eisniRetry: RetryConfig =
+    RetryConfig.fromServicesConfig("eis.ni", config)
 }
