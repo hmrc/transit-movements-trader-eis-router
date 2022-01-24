@@ -39,6 +39,7 @@ import play.api.inject.guice.GuiceableModule
 import play.api.test.Helpers._
 import retry.RetryPolicies
 import retry.RetryPolicy
+import services.RetriesService
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads
@@ -60,15 +61,17 @@ class MessageConnectorSpec
     with IntegrationPatience
     with ScalaCheckPropertyChecks {
 
-  private object NoRetries extends Retries {
+  private object NoRetries extends RetriesService {
 
-    override def createRetryPolicy(config: RetryConfig)(implicit ec: ExecutionContext): RetryPolicy[Future] =
+    override def createRetryPolicy(config: RetryConfig)(implicit
+      ec: ExecutionContext
+    ): RetryPolicy[Future] =
       RetryPolicies.alwaysGiveUp[Future](cats.implicits.catsStdInstancesForFuture(ec))
   }
 
   override def bindings: Seq[GuiceableModule] =
     Seq(
-      bind[Retries].toInstance(NoRetries)
+      bind[RetriesService].toInstance(NoRetries)
     )
 
   "post" should {

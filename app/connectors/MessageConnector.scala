@@ -36,6 +36,7 @@ import play.api.libs.json.Json
 import retry.RetryDetails
 import retry.alleycats.instances._
 import retry.retryingOnFailures
+import services.RetriesService
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads.Implicits._
@@ -51,8 +52,12 @@ import scala.util.Try
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 
-class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, http: HttpClient, retries: Retries)(
-  implicit
+class MessageConnector @Inject() (
+  appConfig: AppConfig,
+  config: Configuration,
+  http: HttpClient,
+  retries: RetriesService
+)(implicit
   ec: ExecutionContext,
   val materializer: Materializer
 ) extends CircuitBreakers

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package connectors
+package services
 
 import com.google.inject.ImplementedBy
 import config.RetryConfig
@@ -25,20 +25,21 @@ import javax.inject.Singleton
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 
-@ImplementedBy(classOf[RetriesImpl])
-trait Retries {
-
+@ImplementedBy(classOf[RetriesServiceImpl])
+trait RetriesService {
   def createRetryPolicy(config: RetryConfig)(implicit ec: ExecutionContext): RetryPolicy[Future]
-
 }
 
 @Singleton
-class RetriesImpl extends Retries {
+class RetriesServiceImpl extends RetriesService {
 
-  override def createRetryPolicy(config: RetryConfig)(implicit ec: ExecutionContext): RetryPolicy[Future] =
+  override def createRetryPolicy(
+    config: RetryConfig
+  )(implicit ec: ExecutionContext): RetryPolicy[Future] =
     RetryPolicies.limitRetriesByCumulativeDelay(
       config.timeout,
-      RetryPolicies.limitRetries[Future](config.maxRetries) join RetryPolicies.constantDelay[Future](config.delay)
+      RetryPolicies.limitRetries[Future](config.maxRetries) join RetryPolicies
+        .constantDelay[Future](config.delay)
     )
 
 }
