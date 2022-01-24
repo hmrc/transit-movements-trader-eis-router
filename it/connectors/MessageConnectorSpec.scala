@@ -18,6 +18,7 @@ package connectors
 
 import akka.stream.Materializer
 import com.github.tomakehurst.wiremock.client.WireMock._
+import com.github.tomakehurst.wiremock.stubbing.Scenario
 import config.AppConfig
 import config.RetryConfig
 import models.RoutingOption
@@ -28,6 +29,7 @@ import org.scalacheck.Gen
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.must.Matchers
+import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
@@ -35,7 +37,7 @@ import play.api.Configuration
 import play.api.http.HeaderNames
 import play.api.http.MimeTypes
 import play.api.inject.bind
-import play.api.inject.guice.GuiceableModule
+import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers._
 import retry.RetryPolicies
 import retry.RetryPolicy
@@ -59,7 +61,8 @@ class MessageConnectorSpec
     with ScalaFutures
     with MockitoSugar
     with IntegrationPatience
-    with ScalaCheckPropertyChecks {
+    with ScalaCheckPropertyChecks
+    with TableDrivenPropertyChecks {
 
   private object NoRetries extends RetriesService {
 
@@ -69,88 +72,144 @@ class MessageConnectorSpec
       RetryPolicies.alwaysGiveUp[Future](cats.implicits.catsStdInstancesForFuture(ec))
   }
 
-  override def bindings: Seq[GuiceableModule] =
-    Seq(
-      bind[RetriesService].toInstance(NoRetries)
-    )
+  private object OneRetry extends RetriesService {
+
+    override def createRetryPolicy(config: RetryConfig)(implicit
+      ec: ExecutionContext
+    ): RetryPolicy[Future] =
+      RetryPolicies.limitRetries[Future](1)(cats.implicits.catsStdInstancesForFuture(ec))
+  }
+
+  lazy val appWithNoRetries: GuiceApplicationBuilder =
+    appBuilder.bindings(bind[RetriesService].toInstance(NoRetries))
+
+  lazy val appWithOneRetry: GuiceApplicationBuilder =
+    appBuilder.bindings(bind[RetriesService].toInstance(OneRetry))
+
+  lazy val appBuilderGen: Gen[GuiceApplicationBuilder] =
+    Gen.oneOf(appWithOneRetry, appWithNoRetries)
 
   "post" should {
 
-    "add CustomProcessHost and X-Correlation-Id headers to messages for GB" in {
+    "add CustomProcessHost and X-Correlation-Id headers to messages for GB" in forAll(
+      appBuilderGen
+    ) { appBuilder =>
+      {
+        val app = appBuilder.build()
 
-      val app = appBuilder.build()
+        running(app) {
 
-      running(app) {
+          val connector = app.injector.instanceOf[MessageConnector]
 
-        val connector = app.injector.instanceOf[MessageConnector]
+          val hc = HeaderCarrier()
 
-        val hc = HeaderCarrier()
-
-        server.stubFor(
-          post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          )
-            .withHeader(
-              "X-Correlation-Id",
-              matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
+          server.stubFor(
+            post(
+              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
             )
-            .withHeader("CustomProcessHost", equalTo("Digital"))
-            .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
-            .willReturn(aResponse().withStatus(ACCEPTED))
-        )
+              .withHeader(
+                "X-Correlation-Id",
+                matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
+              )
+              .withHeader("CustomProcessHost", equalTo("Digital"))
+              .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
+              .willReturn(aResponse().withStatus(ACCEPTED))
+          )
 
-        val result = connector.post(<document></document>, Gb, hc).futureValue
+          val result = connector.post(<document></document>, Gb, hc).futureValue
 
-        result.status mustEqual ACCEPTED
+          result.status mustEqual ACCEPTED
+        }
       }
     }
 
-    "add CustomProcessHost and X-Correlation-Id headers to messages for XI" in {
+    "add CustomProcessHost and X-Correlation-Id headers to messages for XI" in forAll(
+      appBuilderGen
+    ) { appBuilder =>
+      {
+        val app = appBuilder.build()
 
-      val app = appBuilder.build()
+        running(app) {
 
-      running(app) {
+          val connector = app.injector.instanceOf[MessageConnector]
 
-        val connector = app.injector.instanceOf[MessageConnector]
+          val hc = HeaderCarrier()
 
-        val hc = HeaderCarrier()
-
-        server.stubFor(
-          post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/ni")
-          )
-            .withHeader(
-              "X-Correlation-Id",
-              matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
+          server.stubFor(
+            post(
+              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/ni")
             )
-            .withHeader("CustomProcessHost", equalTo("Digital"))
-            .withHeader(HeaderNames.ACCEPT, equalTo(MimeTypes.XML))
-            .willReturn(aResponse().withStatus(ACCEPTED))
-        )
+              .withHeader(
+                "X-Correlation-Id",
+                matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
+              )
+              .withHeader("CustomProcessHost", equalTo("Digital"))
+              .withHeader(HeaderNames.ACCEPT, equalTo(MimeTypes.XML))
+              .willReturn(aResponse().withStatus(ACCEPTED))
+          )
 
-        val result = connector.post(<document></document>, RoutingOption.Xi, hc).futureValue
+          val result = connector.post(<document></document>, RoutingOption.Xi, hc).futureValue
 
-        result.status mustEqual ACCEPTED
+          result.status mustEqual ACCEPTED
+        }
       }
     }
 
-    "return ACCEPTED when post is successful" in {
-      val app = appBuilder.build()
+    "return ACCEPTED when post is successful" in forAll(appBuilderGen) { appBuilder =>
+      {
+        val app = appBuilder.build()
+
+        running(app) {
+          val connector = app.injector.instanceOf[MessageConnector]
+
+          server.stubFor(
+            post(
+              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
+            ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB"))
+              .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
+              .withHeader(
+                "X-Correlation-Id",
+                matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
+              )
+              .willReturn(aResponse().withStatus(ACCEPTED))
+          )
+
+          val hc = HeaderCarrier()
+
+          val result = connector.post(<document></document>, Gb, hc).futureValue
+
+          result.status mustEqual ACCEPTED
+        }
+      }
+    }
+
+    "return ACCEPTED when post is successful on retry if there is an initial failure" in {
+      val app = appWithOneRetry.build()
 
       running(app) {
+        def stub(currentState: String, targetState: String, codeToReturn: Int) =
+          server.stubFor(
+            post(
+              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
+            )
+              .inScenario("Flaky Call")
+              .whenScenarioStateIs(currentState)
+              .willSetStateTo(targetState)
+              .withHeader("Authorization", equalTo("Bearer bearertokenhereGB"))
+              .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
+              .withHeader(
+                "X-Correlation-Id",
+                matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
+              )
+              .willReturn(aResponse().withStatus(codeToReturn))
+          )
+
         val connector = app.injector.instanceOf[MessageConnector]
 
-        server.stubFor(
-          post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB"))
-            .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
-            .withHeader(
-              "X-Correlation-Id",
-              matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
-            )
-            .willReturn(aResponse().withStatus(ACCEPTED))
-        )
+        val secondState = "should now succeed"
+
+        stub(Scenario.STARTED, secondState, INTERNAL_SERVER_ERROR)
+        stub(secondState, secondState, ACCEPTED)
 
         val hc = HeaderCarrier()
 
@@ -170,83 +229,92 @@ class MessageConnectorSpec
       )
     )
 
-    "pass through error status codes" in forAll(errorCodes) { statusCode =>
-      val app = appBuilder.build()
+    "pass through error status codes" in forAll(errorCodes, appBuilderGen) {
+      (statusCode, appBuilder) =>
+        {
+          val app = appBuilder.build()
 
-      running(app) {
-        val connector = app.injector.instanceOf[MessageConnector]
+          running(app) {
+            val connector = app.injector.instanceOf[MessageConnector]
 
-        server.stubFor(
-          post(
-            urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-          ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB"))
-            .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
-            .withHeader(
-              "X-Correlation-Id",
-              matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
+            server.stubFor(
+              post(
+                urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
+              ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB"))
+                .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
+                .withHeader(
+                  "X-Correlation-Id",
+                  matching(
+                    "\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"
+                  )
+                )
+                .willReturn(aResponse().withStatus(statusCode))
             )
-            .willReturn(aResponse().withStatus(statusCode))
-        )
 
-        val hc = HeaderCarrier()
+            val hc = HeaderCarrier()
 
-        val result = connector.post(<document></document>, Gb, hc).futureValue
+            val result = connector.post(<document></document>, Gb, hc).futureValue
 
-        result.status mustEqual statusCode
-      }
+            result.status mustEqual statusCode
+          }
+        }
     }
 
-    "handle exceptions by returning an HttpResponse with status code 500" in {
-      val app = appBuilder.build()
+    "handle exceptions by returning an HttpResponse with status code 500" in forAll(appBuilderGen) {
+      appBuilder =>
+        {
+          val app = appBuilder.build()
 
-      running(app) {
-        implicit val materializer = app.injector.instanceOf[Materializer]
-        val appConfig             = app.injector.instanceOf[AppConfig]
-        val config                = app.injector.instanceOf[Configuration]
-        val http                  = mock[HttpClient]
+          running(app) {
+            implicit val materializer = app.injector.instanceOf[Materializer]
+            val appConfig             = app.injector.instanceOf[AppConfig]
+            val config                = app.injector.instanceOf[Configuration]
+            val http                  = mock[HttpClient]
 
-        when(
-          http.POSTString(
-            any(): String,
-            any(): String,
-            any(): Seq[(String, String)]
-          )(
-            any(): HttpReads[HttpResponse],
-            any(): HeaderCarrier,
-            any(): ExecutionContext
-          )
-        ).thenReturn(failed(new RuntimeException("Simulated timeout")))
+            when(
+              http.POSTString(
+                any(): String,
+                any(): String,
+                any(): Seq[(String, String)]
+              )(
+                any(): HttpReads[HttpResponse],
+                any(): HeaderCarrier,
+                any(): ExecutionContext
+              )
+            ).thenReturn(failed(new RuntimeException("Simulated timeout")))
 
-        val connector = new MessageConnector(appConfig, config, http, NoRetries)
-        val hc        = HeaderCarrier()
-        val result    = connector.post(<document></document>, Gb, hc)
+            val connector = new MessageConnector(appConfig, config, http, NoRetries)
+            val hc        = HeaderCarrier()
+            val result    = connector.post(<document></document>, Gb, hc)
 
-        result.futureValue.status mustEqual INTERNAL_SERVER_ERROR
-      }
+            result.futureValue.status mustEqual INTERNAL_SERVER_ERROR
+          }
+        }
     }
   }
 
   "postNCTSMonitoring" should {
 
-    "return 200 when post is successful" in {
+    "return 200 when post is successful" in forAll(appBuilderGen) { appBuilder =>
+      {
+        val app = appBuilder.build()
 
-      val app = appBuilder.build()
+        running(app) {
+          val connector = app.injector.instanceOf[MessageConnector]
 
-      running(app) {
-        val connector = app.injector.instanceOf[MessageConnector]
+          server.stubFor(post(urlEqualTo("/ncts/movement-notification")).willReturn(aResponse()))
 
-        server.stubFor(post(urlEqualTo("/ncts/movement-notification")).willReturn(aResponse()))
+          val result = connector
+            .postNCTSMonitoring(
+              "TEST-ID",
+              LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
+              Gb,
+              HeaderCarrier()
+            )
+            .futureValue
 
-        val result = connector
-          .postNCTSMonitoring(
-            "TEST-ID",
-            LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
-            Gb,
-            HeaderCarrier()
-          )
-          .futureValue
-
-        result.status mustEqual OK
+          result.status mustEqual OK
+        }
       }
     }
 
@@ -260,64 +328,68 @@ class MessageConnectorSpec
       )
     )
 
-    "pass through error status codes" in forAll(errorCodes) { statusCode =>
-      val app = appBuilder.build()
+    "pass through error status codes" in forAll(errorCodes, appBuilderGen) {
+      (statusCode, appBuilder) =>
+        val app = appBuilder.build()
 
-      running(app) {
-        val connector = app.injector.instanceOf[MessageConnector]
+        running(app) {
+          val connector = app.injector.instanceOf[MessageConnector]
 
-        server.stubFor(
-          post(
-            urlEqualTo("/ncts/movement-notification")
-          ).willReturn(aResponse().withStatus(statusCode))
-        )
-
-        val result = connector
-          .postNCTSMonitoring(
-            "TEST-ID",
-            LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
-            Gb,
-            HeaderCarrier()
+          server.stubFor(
+            post(
+              urlEqualTo("/ncts/movement-notification")
+            ).willReturn(aResponse().withStatus(statusCode))
           )
-          .futureValue
 
-        result.status mustEqual statusCode
-      }
+          val result = connector
+            .postNCTSMonitoring(
+              "TEST-ID",
+              LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
+              Gb,
+              HeaderCarrier()
+            )
+            .futureValue
+
+          result.status mustEqual statusCode
+        }
     }
 
-    "handle exceptions by returning an HttpResponse with status code 500" in {
-      val app = appBuilder.build()
+    "handle exceptions by returning an HttpResponse with status code 500" in forAll(appBuilderGen) {
+      appBuilder =>
+        {
+          val app = appBuilder.build()
 
-      running(app) {
-        implicit val materializer = app.injector.instanceOf[Materializer]
-        val appConfig             = app.injector.instanceOf[AppConfig]
-        val config                = app.injector.instanceOf[Configuration]
-        val http                  = mock[HttpClient]
+          running(app) {
+            implicit val materializer = app.injector.instanceOf[Materializer]
+            val appConfig             = app.injector.instanceOf[AppConfig]
+            val config                = app.injector.instanceOf[Configuration]
+            val http                  = mock[HttpClient]
 
-        when(
-          http.POSTString(
-            any(): String,
-            any(): String,
-            any(): Seq[(String, String)]
-          )(
-            any(): HttpReads[HttpResponse],
-            any(): HeaderCarrier,
-            any(): ExecutionContext
-          )
-        ).thenReturn(failed(new RuntimeException("Simulated timeout")))
+            when(
+              http.POSTString(
+                any(): String,
+                any(): String,
+                any(): Seq[(String, String)]
+              )(
+                any(): HttpReads[HttpResponse],
+                any(): HeaderCarrier,
+                any(): ExecutionContext
+              )
+            ).thenReturn(failed(new RuntimeException("Simulated timeout")))
 
-        val connector = new MessageConnector(appConfig, config, http, NoRetries)
-        val result = connector
-          .postNCTSMonitoring(
-            "TEST-ID",
-            LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
-            Gb,
-            HeaderCarrier()
-          )
-          .futureValue
+            val connector = new MessageConnector(appConfig, config, http, NoRetries)
+            val result = connector
+              .postNCTSMonitoring(
+                "TEST-ID",
+                LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
+                Gb,
+                HeaderCarrier()
+              )
+              .futureValue
 
-        result.status mustEqual INTERNAL_SERVER_ERROR
-      }
+            result.status mustEqual INTERNAL_SERVER_ERROR
+          }
+        }
     }
 
   }
