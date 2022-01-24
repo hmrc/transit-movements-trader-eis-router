@@ -99,6 +99,16 @@ class MessageConnectorSpec
         val app = appBuilder.build()
 
         running(app) {
+
+          // Important note: while this test considers successes, as this connector has a retry function,
+          // we have to ensure that any success result is not retried. To do this, we make the stub return
+          // a 202 status the first time it is called, then we transition it into a state where it'll return
+          // an error. As the retry algorithm should not attempt a retry on a 202, the stub should only be
+          // called once - so a 500 should never be returned.
+          //
+          // If a 500 error is returned, this most likely means a retry happened, the first place to look
+          // should be the code the determines if a result is successful.
+
           def stub(currentState: String, targetState: String, codeToReturn: Int) =
             server.stubFor(
               post(
