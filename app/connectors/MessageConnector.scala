@@ -51,12 +51,11 @@ import scala.util.Try
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 
-class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, http: HttpClient)(
+class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, http: HttpClient, retries: Retries)(
   implicit
   ec: ExecutionContext,
   val materializer: Materializer
 ) extends CircuitBreakers
-    with Retries
     with Logging {
 
   private case class EisDetails(
@@ -131,7 +130,7 @@ class MessageConnector @Inject() (appConfig: AppConfig, config: Configuration, h
 
     // It is assumed that all errors are fatal (see recover block) and so we just need to retry on failures.
     retryingOnFailures(
-      createRetryPolicy(details.retryConfig),
+      retries.createRetryPolicy(details.retryConfig),
       (t: HttpResponse) => Future.successful(!statusCodeFailure(t)),
       onFailure(details.routingMessage)
     ) {

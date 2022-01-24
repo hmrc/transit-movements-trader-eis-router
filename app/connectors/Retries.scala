@@ -16,23 +16,29 @@
 
 package connectors
 
-import cats.implicits.catsStdInstancesForFuture
+import com.google.inject.ImplementedBy
 import config.RetryConfig
 import retry.RetryPolicies
 import retry.RetryPolicy
 
+import javax.inject.Singleton
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 
+@ImplementedBy(classOf[RetriesImpl])
 trait Retries {
 
-  def createRetryPolicy(config: RetryConfig)(implicit ec: ExecutionContext): RetryPolicy[Future] =
-    RetryPolicies.limitRetriesByCumulativeDelay[Future](
+  def createRetryPolicy(config: RetryConfig)(implicit ec: ExecutionContext): RetryPolicy[Future]
+
+}
+
+@Singleton
+class RetriesImpl extends Retries {
+
+  override def createRetryPolicy(config: RetryConfig)(implicit ec: ExecutionContext): RetryPolicy[Future] =
+    RetryPolicies.limitRetriesByCumulativeDelay(
       config.timeout,
-      RetryPolicies.limitRetriesByDelay[Future](
-        config.delay,
-        RetryPolicies.limitRetries[Future](config.maxRetries)
-      )
+      RetryPolicies.limitRetries[Future](config.maxRetries) join RetryPolicies.constantDelay[Future](config.delay)
     )
 
 }

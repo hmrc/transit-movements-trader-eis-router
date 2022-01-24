@@ -19,24 +19,36 @@ package connectors
 import akka.stream.Materializer
 import com.github.tomakehurst.wiremock.client.WireMock._
 import config.AppConfig
+import config.RetryConfig
 import models.RoutingOption
 import models.RoutingOption.Gb
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.scalacheck.Gen
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.concurrent.IntegrationPatience
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import play.api.Configuration
-import play.api.http.{HeaderNames, MimeTypes}
+import play.api.http.HeaderNames
+import play.api.http.MimeTypes
+import play.api.inject.bind
+import play.api.inject.guice.GuiceableModule
 import play.api.test.Helpers._
-import uk.gov.hmrc.http.{HeaderCarrier, HttpClient, HttpReads, HttpResponse}
+import retry.RetryPolicies
+import retry.RetryPolicy
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.HttpClient
+import uk.gov.hmrc.http.HttpReads
+import uk.gov.hmrc.http.HttpResponse
 
-import java.time.{LocalDateTime, ZoneOffset}
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.Future.failed
 
 class MessageConnectorSpec
@@ -47,6 +59,17 @@ class MessageConnectorSpec
     with MockitoSugar
     with IntegrationPatience
     with ScalaCheckPropertyChecks {
+
+  private object NoRetries extends Retries {
+
+    override def createRetryPolicy(config: RetryConfig)(implicit ec: ExecutionContext): RetryPolicy[Future] =
+      RetryPolicies.alwaysGiveUp[Future](cats.implicits.catsStdInstancesForFuture(ec))
+  }
+
+  override def bindings: Seq[GuiceableModule] =
+    Seq(
+      bind[Retries].toInstance(NoRetries)
+    )
 
   "post" should {
 
@@ -191,7 +214,7 @@ class MessageConnectorSpec
           )
         ).thenReturn(failed(new RuntimeException("Simulated timeout")))
 
-        val connector = new MessageConnector(appConfig, config, http)
+        val connector = new MessageConnector(appConfig, config, http, NoRetries)
         val hc        = HeaderCarrier()
         val result    = connector.post(<document></document>, Gb, hc)
 
@@ -280,7 +303,7 @@ class MessageConnectorSpec
           )
         ).thenReturn(failed(new RuntimeException("Simulated timeout")))
 
-        val connector = new MessageConnector(appConfig, config, http)
+        val connector = new MessageConnector(appConfig, config, http, NoRetries)
         val result = connector
           .postNCTSMonitoring(
             "TEST-ID",
