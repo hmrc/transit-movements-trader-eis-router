@@ -95,26 +95,37 @@ class MessageConnectorSpec
       appBuilderGen
     ) { appBuilder =>
       {
+        server.resetAll()
         val app = appBuilder.build()
 
         running(app) {
+          def stub(currentState: String, targetState: String, codeToReturn: Int) =
+            server.stubFor(
+              post(
+                urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
+              )
+                .inScenario("Standard Call")
+                .whenScenarioStateIs(currentState)
+                .withHeader(
+                  "X-Correlation-Id",
+                  matching(
+                    "\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"
+                  )
+                )
+                .withHeader("CustomProcessHost", equalTo("Digital"))
+                .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
+                .willReturn(aResponse().withStatus(codeToReturn))
+                .willSetStateTo(targetState)
+            )
 
           val connector = app.injector.instanceOf[MessageConnector]
 
-          val hc = HeaderCarrier()
+          val secondState = "should now fail"
 
-          server.stubFor(
-            post(
-              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-            )
-              .withHeader(
-                "X-Correlation-Id",
-                matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
-              )
-              .withHeader("CustomProcessHost", equalTo("Digital"))
-              .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
-              .willReturn(aResponse().withStatus(ACCEPTED))
-          )
+          stub(Scenario.STARTED, secondState, ACCEPTED)
+          stub(secondState, secondState, INTERNAL_SERVER_ERROR)
+
+          val hc = HeaderCarrier()
 
           val result = connector.post(<document></document>, Gb, hc).futureValue
 
@@ -127,26 +138,37 @@ class MessageConnectorSpec
       appBuilderGen
     ) { appBuilder =>
       {
+        server.resetAll()
         val app = appBuilder.build()
 
         running(app) {
+          def stub(currentState: String, targetState: String, codeToReturn: Int) =
+            server.stubFor(
+              post(
+                urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/ni")
+              )
+                .withHeader(
+                  "X-Correlation-Id",
+                  matching(
+                    "\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"
+                  )
+                )
+                .withHeader("CustomProcessHost", equalTo("Digital"))
+                .withHeader(HeaderNames.ACCEPT, equalTo(MimeTypes.XML))
+                .inScenario("Standard Call")
+                .whenScenarioStateIs(currentState)
+                .willReturn(aResponse().withStatus(codeToReturn))
+                .willSetStateTo(targetState)
+            )
 
           val connector = app.injector.instanceOf[MessageConnector]
 
-          val hc = HeaderCarrier()
+          val secondState = "should now fail"
 
-          server.stubFor(
-            post(
-              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/ni")
-            )
-              .withHeader(
-                "X-Correlation-Id",
-                matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
-              )
-              .withHeader("CustomProcessHost", equalTo("Digital"))
-              .withHeader(HeaderNames.ACCEPT, equalTo(MimeTypes.XML))
-              .willReturn(aResponse().withStatus(ACCEPTED))
-          )
+          stub(Scenario.STARTED, secondState, ACCEPTED)
+          stub(secondState, secondState, INTERNAL_SERVER_ERROR)
+
+          val hc = HeaderCarrier()
 
           val result = connector.post(<document></document>, RoutingOption.Xi, hc).futureValue
 
@@ -157,22 +179,34 @@ class MessageConnectorSpec
 
     "return ACCEPTED when post is successful" in forAll(appBuilderGen) { appBuilder =>
       {
+        server.resetAll()
         val app = appBuilder.build()
 
         running(app) {
+          def stub(currentState: String, targetState: String, codeToReturn: Int) =
+            server.stubFor(
+              post(
+                urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
+              ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB"))
+                .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
+                .withHeader(
+                  "X-Correlation-Id",
+                  matching(
+                    "\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"
+                  )
+                )
+                .inScenario("Standard Call")
+                .whenScenarioStateIs(currentState)
+                .willReturn(aResponse().withStatus(codeToReturn))
+                .willSetStateTo(targetState)
+            )
+
           val connector = app.injector.instanceOf[MessageConnector]
 
-          server.stubFor(
-            post(
-              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-            ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB"))
-              .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
-              .withHeader(
-                "X-Correlation-Id",
-                matching("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
-              )
-              .willReturn(aResponse().withStatus(ACCEPTED))
-          )
+          val secondState = "should now fail"
+
+          stub(Scenario.STARTED, secondState, ACCEPTED)
+          stub(secondState, secondState, INTERNAL_SERVER_ERROR)
 
           val hc = HeaderCarrier()
 
@@ -269,6 +303,7 @@ class MessageConnectorSpec
             implicit val materializer = app.injector.instanceOf[Materializer]
             val appConfig             = app.injector.instanceOf[AppConfig]
             val config                = app.injector.instanceOf[Configuration]
+            val retriesService        = app.injector.instanceOf[RetriesService]
             val http                  = mock[HttpClient]
 
             when(
@@ -283,7 +318,7 @@ class MessageConnectorSpec
               )
             ).thenReturn(failed(new RuntimeException("Simulated timeout")))
 
-            val connector = new MessageConnector(appConfig, config, http, NoRetries)
+            val connector = new MessageConnector(appConfig, config, http, retriesService)
             val hc        = HeaderCarrier()
             val result    = connector.post(<document></document>, Gb, hc)
 
@@ -363,6 +398,7 @@ class MessageConnectorSpec
             implicit val materializer = app.injector.instanceOf[Materializer]
             val appConfig             = app.injector.instanceOf[AppConfig]
             val config                = app.injector.instanceOf[Configuration]
+            val retriesService        = app.injector.instanceOf[RetriesService]
             val http                  = mock[HttpClient]
 
             when(
@@ -377,7 +413,7 @@ class MessageConnectorSpec
               )
             ).thenReturn(failed(new RuntimeException("Simulated timeout")))
 
-            val connector = new MessageConnector(appConfig, config, http, NoRetries)
+            val connector = new MessageConnector(appConfig, config, http, retriesService)
             val result = connector
               .postNCTSMonitoring(
                 "TEST-ID",
