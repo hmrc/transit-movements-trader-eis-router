@@ -24,6 +24,8 @@ import config.CircuitBreakerConfig
 import config.RetryConfig
 import models.Movement
 import models.RoutingOption
+import connectors.OutgoingHeaders.headers
+import models.{Movement, RoutingOption}
 import models.RoutingOption.Gb
 import models.RoutingOption.Xi
 import play.api.Configuration
@@ -195,7 +197,9 @@ class MessageConnector @Inject() (
     hc: HeaderCarrier
   ): Future[HttpResponse] = {
 
-    implicit val headerCarrier: HeaderCarrier = hc
+    val requestHeaders = hc.headers(OutgoingHeaders.headers)
+
+    implicit val headerCarrier: HeaderCarrier = hc.withExtraHeaders(requestHeaders: _*)
 
     val movementJson: JsValue =
       Json.toJson(
