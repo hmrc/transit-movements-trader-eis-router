@@ -21,7 +21,7 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.stubbing.Scenario
 import config.AppConfig
 import config.RetryConfig
-import models.RoutingOption
+import models.{Movement, RoutingOption}
 import models.RoutingOption.Gb
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
@@ -38,6 +38,7 @@ import play.api.http.HeaderNames
 import play.api.http.MimeTypes
 import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.libs.json.Json
 import play.api.test.Helpers._
 import retry.RetryPolicies
 import retry.RetryPolicy
@@ -347,14 +348,26 @@ class MessageConnectorSpec
         running(app) {
           val connector = app.injector.instanceOf[MessageConnector]
 
-          server.stubFor(post(urlEqualTo("/ncts/movement-notification")).willReturn(aResponse()))
+          val testMovement = Movement(
+            "testXMsgSender",
+            "TEST-ID",
+            LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
+            Gb.prefix
+          )
+
+          val testRequestBody = Json.toJson(testMovement)
+
+          server.stubFor(post(urlEqualTo("/ncts/movement-notification"))
+            .withHeader("X-Message-Sender", equalTo("testXMsgSender"))
+            .withRequestBody(equalToJson(testRequestBody.toString()))
+            .willReturn(aResponse()))
 
           val result = connector
             .postNCTSMonitoring(
-              "TEST-ID",
-              LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
-              Gb,
-              HeaderCarrier()
+              testMovement.messageCode,
+              testMovement.timestamp,
+              RoutingOption.Gb,
+              HeaderCarrier().withExtraHeaders("X-Message-Sender"-> "testXMsgSender")
             )
             .futureValue
 

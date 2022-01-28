@@ -195,7 +195,7 @@ class MessageConnector @Inject() (
     hc: HeaderCarrier
   ): Future[HttpResponse] = {
 
-    implicit val headerCarrier: HeaderCarrier = hc
+    implicit val headerCarrier: HeaderCarrier = hc.withExtraHeaders(hc.headers(Seq("X-Message-Sender")): _*)
 
     val movementJson: JsValue =
       Json.toJson(
