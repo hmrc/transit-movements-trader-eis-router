@@ -19,7 +19,7 @@ package services
 import com.google.inject.Inject
 import config.AppConfig
 import connectors.MessageConnector
-import models.MessageType.{ArrivalNotification, DepartureDeclaration}
+import models.MessageType.{arrivalValues, departureValues}
 import models.ParseError.InvalidMessageCode
 import models._
 import play.api.Logging
@@ -66,13 +66,13 @@ class RoutingService @Inject() (
         }
 
       case Some(XmlParser.RootNode(messageType, rootXml)) =>
-        val (parseOffice: Either[ParseError, Office], sendToNCTS: Boolean) =
-          if (MessageType.arrivalValues.contains(messageType)) {
+        val parseOffice: Either[ParseError, Office] =
+          if (arrivalValues contains messageType) {
             logger.debug("Determining office of presentation ...")
-            (XmlParser.officeOfPresentation(rootXml), messageType.code == ArrivalNotification.code)
+            XmlParser.officeOfPresentation(rootXml)
           } else {
             logger.debug("Determining office of departure ...")
-            (XmlParser.officeOfDeparture(rootXml), messageType.code == DepartureDeclaration.code)
+            XmlParser.officeOfDeparture(rootXml)
           }
 
         parseOffice.flatMap { office =>
@@ -87,7 +87,7 @@ class RoutingService @Inject() (
 
               val resp = messageConnector.post(xml, routingOption, headerCarrier)
 
-              if (sendToNCTS && appConfig.nctsMonitoringEnabled) {
+              if (appConfig.nctsMonitoringEnabled) {
                 messageConnector.postNCTSMonitoring(
                   messageType.code,
                   LocalDateTime.now,

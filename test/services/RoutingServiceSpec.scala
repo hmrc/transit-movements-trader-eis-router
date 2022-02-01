@@ -18,26 +18,22 @@ package services
 
 import config.AppConfig
 import connectors.MessageConnector
-import models.{ChannelType, FailureMessage, MessageType, RoutingOption}
 import models.ChannelType.Api
-import models.MessageType.{ArrivalNotification, DepartureDeclaration}
+import models.MessageType.{arrivalValues, departureValues}
 import models.ParseError._
-import models.RoutingOption.Gb
-import models.RoutingOption.Xi
-import org.mockito.ArgumentMatchers.any
-import org.mockito.ArgumentMatchers.{eq => eqTo}
+import models.RoutingOption.{Gb, Xi}
+import models.{ChannelType, FailureMessage, MessageType, RoutingOption}
+import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.Mockito.{never, verify, when}
 import org.scalacheck.Gen
-import org.scalatest.BeforeAndAfterEach
-import org.scalatest.OptionValues
+import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
-import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.http.HttpResponse
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 
 import scala.concurrent.Future
 import scala.xml.Elem
@@ -62,8 +58,14 @@ class RoutingServiceSpec
 
   val channelGen = Gen.oneOf(ChannelType.values)
   val routeGen   = Gen.oneOf(RoutingOption.values)
-  val messageTypeGen = Gen.oneOf(
-    MessageType.values.filterNot(msg => msg == DepartureDeclaration | msg == ArrivalNotification)
+  val notNCTSMessageTypeGen = Gen.oneOf(
+    MessageType.values.filterNot(msg => (arrivalValues ++ departureValues) contains msg)
+  )
+  val nctsMessageTypeArrGen = Gen.oneOf(
+    MessageType.values.filter(msg => arrivalValues contains msg)
+  )
+  val nctsMessageTypeDepGen = Gen.oneOf(
+    MessageType.values.filter(msg => departureValues contains msg)
   )
 
   "submitMessage" - {
@@ -197,20 +199,20 @@ class RoutingServiceSpec
       }
     }
 
-    "never submits movement to NCTS monitoring if message type is not DepartureDeclaration or ArrivalNotification" in {
+    "never posts a movement to NCTS monitoring if message type is not a Departure or Arrival message type" in {
 
       def nonDepartureXml(messageCode: String): Elem = {
         scala.xml.XML.loadString(s"""
            |<TransitWrapper>
            |   <$messageCode>
-           |      <CUSOFFPREOFFRES>
-           |         <RefNumRES1>XI12345</RefNumRES1>
-           |      </CUSOFFPREOFFRES>
+           |      <GUAREF2>
+           |         <GuaRefNumGRNREF21>XI12345</GuaRefNumGRNREF21>
+           |      </GUAREF2>
            |   </$messageCode>
            |</TransitWrapper>""".stripMargin)
       }
 
-      forAll(messageTypeGen, channelGen) { (messageType, channelType) =>
+      forAll(notNCTSMessageTypeGen, channelGen) { (messageType, channelType) =>
         val mc = mock[MessageConnector]
         when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
@@ -218,12 +220,12 @@ class RoutingServiceSpec
         when(fsrc.canForward(any(), any())).thenReturn(true)
 
         service(fsrc, mc).submitMessage(nonDepartureXml(messageType.rootNode), channelType, hc)
-
+        verify(mc).post(any(), any(), any())
         verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
       }
     }
 
-    "does not submit a movement to NCTS monitoring if the ncts-monitoring feature switch is disabled" in {
+    "never posts a movement to NCTS monitoring if the ncts-monitoring feature switch is disabled" in {
 
       val input = <TransitWrapper>
         <CC015B>
@@ -248,6 +250,64 @@ class RoutingServiceSpec
 
         verify(mc).post(any(), eqTo(Gb), eqTo(hc))
         verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
+      }
+    }
+
+    "posts arrivals to NCTS monitoring if ncts-monitoring feature is enabled" in {
+
+      def messageXML(rootNode: String): Elem = {
+        scala.xml.XML.loadString(
+          s"""
+             |<TransitWrapper>
+             |   <$rootNode>
+             |      <CUSOFFPREOFFRES>
+             |         <RefNumRES1>XI12345</RefNumRES1>
+             |      </CUSOFFPREOFFRES>
+             |   </$rootNode>
+             |</TransitWrapper>""".stripMargin)
+      }
+
+      forAll(nctsMessageTypeArrGen, channelGen) { (msgType, channel) =>
+        val mc = mock[MessageConnector]
+        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+        when(mc.postNCTSMonitoring(any(), any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+        val fsrc = mock[RouteChecker]
+        when(fsrc.canForward(any(), any())).thenReturn(true)
+
+        service(fsrc, mc).submitMessage(messageXML(msgType.rootNode), channel, hc)
+
+        verify(mc).postNCTSMonitoring(any(), any(), any(), any())
+        verify(mc).post(any(), any(), any())
+      }
+    }
+
+    "posts departures to NCTS monitoring if ncts-monitoring feature is enabled" in {
+
+      def messageXML(rootNode: String): Elem = {
+        scala.xml.XML.loadString(
+          s"""
+             |<TransitWrapper>
+             |   <$rootNode>
+             |      <CUSOFFDEPEPT>
+             |         <RefNumEPT1>XI12345</RefNumEPT1>
+             |      </CUSOFFDEPEPT>
+             |   </$rootNode>
+             |</TransitWrapper>""".stripMargin)
+      }
+
+      forAll(nctsMessageTypeDepGen, channelGen) { (msgType, channel) =>
+        val mc = mock[MessageConnector]
+        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+        when(mc.postNCTSMonitoring(any(), any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+
+        val fsrc = mock[RouteChecker]
+        when(fsrc.canForward(any(), any())).thenReturn(true)
+
+        service(fsrc, mc).submitMessage(messageXML(msgType.rootNode), channel, hc)
+
+        verify(mc).postNCTSMonitoring(any(), any(), any(), any())
+        verify(mc).post(any(), any(), any())
       }
     }
 
