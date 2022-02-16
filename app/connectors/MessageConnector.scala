@@ -114,17 +114,18 @@ class MessageConnector @Inject() (
   def onFailure(
     instance: String
   )(httpResponse: HttpResponse, retryDetails: RetryDetails): Future[Unit] = {
+    val attemptNumber = retryDetails.retriesSoFar + 1
     if (retryDetails.givingUp) {
       logger.error(
         s"Message when $instance failed with status code ${httpResponse.status}. " +
-          s"Attempted ${retryDetails.retriesSoFar} times in ${retryDetails.cumulativeDelay.toSeconds} seconds, giving up."
+          s"Attempted $attemptNumber times in ${retryDetails.cumulativeDelay.toSeconds} seconds, giving up."
       )
     } else {
       val nextAttempt =
         retryDetails.upcomingDelay.map(d => s"in ${d.toSeconds} seconds").getOrElse("immediately")
       logger.warn(
         s"Message when $instance failed with status code ${httpResponse.status}. " +
-          s"Attempted ${retryDetails.retriesSoFar} times in ${retryDetails.cumulativeDelay.toSeconds} seconds so far, trying again $nextAttempt."
+          s"Attempted $attemptNumber times in ${retryDetails.cumulativeDelay.toSeconds} seconds so far, trying again $nextAttempt."
       )
     }
     Future.unit
