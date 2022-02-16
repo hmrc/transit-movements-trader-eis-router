@@ -256,8 +256,7 @@ class RoutingServiceSpec
     "posts arrivals to NCTS monitoring if ncts-monitoring feature is enabled" in {
 
       def messageXML(rootNode: String): Elem = {
-        scala.xml.XML.loadString(
-          s"""
+        scala.xml.XML.loadString(s"""
              |<TransitWrapper>
              |   <$rootNode>
              |      <CUSOFFPREOFFRES>
@@ -270,7 +269,8 @@ class RoutingServiceSpec
       forAll(nctsMessageTypeArrGen, channelGen) { (msgType, channel) =>
         val mc = mock[MessageConnector]
         when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
-        when(mc.postNCTSMonitoring(any(), any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+        when(mc.postNCTSMonitoring(any(), any(), any(), any()))
+          .thenReturn(Future.successful(HttpResponse(200, "")))
 
         val fsrc = mock[RouteChecker]
         when(fsrc.canForward(any(), any())).thenReturn(true)
@@ -285,8 +285,7 @@ class RoutingServiceSpec
     "posts departures to NCTS monitoring if ncts-monitoring feature is enabled" in {
 
       def messageXML(rootNode: String): Elem = {
-        scala.xml.XML.loadString(
-          s"""
+        scala.xml.XML.loadString(s"""
              |<TransitWrapper>
              |   <$rootNode>
              |      <CUSOFFDEPEPT>
@@ -299,7 +298,8 @@ class RoutingServiceSpec
       forAll(nctsMessageTypeDepGen, channelGen) { (msgType, channel) =>
         val mc = mock[MessageConnector]
         when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
-        when(mc.postNCTSMonitoring(any(), any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+        when(mc.postNCTSMonitoring(any(), any(), any(), any()))
+          .thenReturn(Future.successful(HttpResponse(200, "")))
 
         val fsrc = mock[RouteChecker]
         when(fsrc.canForward(any(), any())).thenReturn(true)

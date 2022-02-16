@@ -100,12 +100,15 @@ class MessageConnector @Inject() (
   override lazy val niCircuitBreakerConfig: CircuitBreakerConfig = appConfig.eisniCircuitBreaker
 
   private def statusCodeFailure(response: HttpResponse): Boolean =
-    Status.isServerError(response.status) || response.status == Status.FORBIDDEN
+    shouldCauseRetry(response) || response.status == Status.FORBIDDEN
 
-  def isFailure[A](result: Try[HttpResponse]): Boolean =
+  private def shouldCauseRetry(response: HttpResponse): Boolean =
+    Status.isServerError(response.status)
+
+  def shouldCauseCircuitBreakerStrike[A](result: Try[HttpResponse]): Boolean =
     result match {
-      case Success(response) if !statusCodeFailure(response) => false
-      case _                                                 => true
+      case Success(response) if !shouldCauseRetry(response) => false
+      case _                                                => true
     }
 
   def onFailure(
@@ -136,7 +139,7 @@ class MessageConnector @Inject() (
     // It is assumed that all errors are fatal (see recover block) and so we just need to retry on failures.
     retryingOnFailures(
       retries.createRetryPolicy(details.retryConfig),
-      (t: HttpResponse) => Future.successful(!statusCodeFailure(t)),
+      (t: HttpResponse) => Future.successful(!shouldCauseRetry(t)),
       onFailure(details.routingMessage)
     ) {
 
@@ -183,7 +186,7 @@ class MessageConnector @Inject() (
               HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
             }
         },
-        isFailure
+        shouldCauseCircuitBreakerStrike
       )
     }
   }
@@ -195,7 +198,8 @@ class MessageConnector @Inject() (
     hc: HeaderCarrier
   ): Future[HttpResponse] = {
 
-    implicit val headerCarrier: HeaderCarrier = hc.withExtraHeaders(hc.headers(Seq("X-Message-Sender")): _*)
+    implicit val headerCarrier: HeaderCarrier =
+      hc.withExtraHeaders(hc.headers(Seq("X-Message-Sender")): _*)
 
     val movementJson: JsValue =
       Json.toJson(
