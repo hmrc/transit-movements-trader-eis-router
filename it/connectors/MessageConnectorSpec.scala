@@ -357,17 +357,19 @@ class MessageConnectorSpec
 
           val testRequestBody = Json.toJson(testMovement)
 
-          server.stubFor(post(urlEqualTo("/ncts/movement-notification"))
-            .withHeader("X-Message-Sender", equalTo("testXMsgSender"))
-            .withRequestBody(equalToJson(testRequestBody.toString()))
-            .willReturn(aResponse()))
+          server.stubFor(
+            post(urlEqualTo("/ncts/movement-notification"))
+              .withHeader("X-Message-Sender", equalTo("testXMsgSender"))
+              .withRequestBody(equalToJson(testRequestBody.toString()))
+              .willReturn(aResponse())
+          )
 
           val result = connector
             .postNCTSMonitoring(
               testMovement.messageCode,
               testMovement.timestamp,
               RoutingOption.Gb,
-              HeaderCarrier().withExtraHeaders("X-Message-Sender"-> "testXMsgSender")
+              HeaderCarrier().withExtraHeaders("X-Message-Sender" -> "testXMsgSender")
             )
             .futureValue
 
