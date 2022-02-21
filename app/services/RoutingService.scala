@@ -19,7 +19,6 @@ package services
 import com.google.inject.Inject
 import config.AppConfig
 import connectors.MessageConnector
-import models.MessageType.{arrivalValues, departureValues}
 import models.ParseError.InvalidMessageCode
 import models._
 import play.api.Logging
@@ -67,7 +66,7 @@ class RoutingService @Inject() (
 
       case Some(XmlParser.RootNode(messageType, rootXml)) =>
         val parseOffice: Either[ParseError, Office] =
-          if (arrivalValues contains messageType) {
+          if (MessageType.arrivalValues contains messageType) {
             logger.debug("Determining office of presentation ...")
             XmlParser.officeOfPresentation(rootXml)
           } else {
