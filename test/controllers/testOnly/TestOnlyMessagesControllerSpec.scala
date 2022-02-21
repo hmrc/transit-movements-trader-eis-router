@@ -16,6 +16,7 @@
 
 package controllers.testOnly
 
+import config.AppConfig
 import controllers.MessagesController
 import controllers.actions.ChannelAction
 import models.ChannelType.Api
@@ -28,12 +29,13 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import play.api.http.{HeaderNames, MimeTypes}
-import play.api.test.Helpers.{ACCEPTED, GATEWAY_TIMEOUT, defaultAwaitTimeout, status}
+import play.api.test.Helpers.{ACCEPTED, defaultAwaitTimeout, status}
 import play.api.test.{FakeHeaders, FakeRequest, Helpers}
 import services.RoutingService
 import uk.gov.hmrc.http.HttpResponse
 
-import scala.concurrent.Future
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future, TimeoutException}
 import scala.xml.Elem
 
 class TestOnlyMessagesControllerSpec
@@ -60,25 +62,45 @@ class TestOnlyMessagesControllerSpec
         cc,
         channelAction,
         mockRoutingService
-      )
+      ),
+      app.injector.instanceOf[AppConfig]
     )
   }
 
   "post" when {
 
-    "posting XML to trigger timeout" should {
-      "return gateway timeout" in {
+    "posting XML with Timeout true to trigger timeout" should {
+      "return timeout exception" in {
         val mockRoutingService = mock[RoutingService]
 
         val xml =
           <CC007A>
-            <MesSenMES3>SYST17B-NCTS_TIMEOUT</MesSenMES3>
+            <Timeout>true</Timeout>
           </CC007A>
 
-        val result = controller(mockRoutingService).post()(fakeXmlRequest(xml))
-        status(result) shouldBe GATEWAY_TIMEOUT
+        lazy val result = controller(mockRoutingService).post()(fakeXmlRequest(xml))
+        a [TimeoutException] mustBe thrownBy(Await.result(result, Duration.Inf))
 
         verify(mockRoutingService, never()).submitMessage(any(), any(), any())
+      }
+    }
+
+    "posting XML with Timeout false to not trigger timeout" should {
+      "return timeout exception" in {
+        val mockRoutingService = mock[RoutingService]
+
+        val xml =
+          <CC007A>
+            <Timeout>false</Timeout>
+          </CC007A>
+
+        when(mockRoutingService.submitMessage(any(), any(), any()))
+          .thenReturn(Right(Future.successful(HttpResponse(ACCEPTED, ""))))
+
+        val result = controller(mockRoutingService).post()(fakeXmlRequest(xml))
+        status(result) shouldBe ACCEPTED
+
+        verify(mockRoutingService).submitMessage(any(), any(), any())
       }
     }
 
@@ -90,7 +112,7 @@ class TestOnlyMessagesControllerSpec
 
             val xml =
               <CC007A>
-                <MesSenMES3>{str}</MesSenMES3>
+                <RandomField>{str}</RandomField>
               </CC007A>
 
             when(mockRoutingService.submitMessage(any(), any(), any()))

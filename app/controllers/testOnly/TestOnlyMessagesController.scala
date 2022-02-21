@@ -16,12 +16,14 @@
 
 package controllers.testOnly
 
+import config.AppConfig
 import controllers.MessagesController
 import controllers.actions.ChannelAction
 import models.requests.ChannelRequest
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
+import java.util.concurrent.TimeoutException
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
 import scala.xml.NodeSeq
@@ -30,15 +32,19 @@ import scala.xml.NodeSeq
 class TestOnlyMessagesController @Inject()(
   cc: ControllerComponents,
   channelAction: ChannelAction,
-  messagesController: MessagesController
+  messagesController: MessagesController,
+  config: AppConfig
 ) extends BackendController(cc) {
 
   def post(): Action[NodeSeq] = (Action andThen channelAction).async(parse.xml) {
     request: ChannelRequest[NodeSeq] =>
 
-      (request.body \\ "_" \ "MesSenMES3").text match {
-        case "SYST17B-NCTS_TIMEOUT" => Future.successful(GatewayTimeout)
-        case _ => messagesController.post()(request)
+      (request.body \\ "_" \ "Timeout").text match {
+        case "true" =>
+          Thread.sleep(config.testOnlyRequestTimeout)
+          Future.failed(new TimeoutException())
+        case _ =>
+          messagesController.post()(request)
       }
   }
 }

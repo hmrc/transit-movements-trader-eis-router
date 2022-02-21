@@ -15,6 +15,7 @@ lazy val microservice = Project(appName, file("."))
   .settings(inConfig(IntegrationTest)(ScalafmtPlugin.scalafmtConfigSettings))
   .settings(scalacSettings)
   .settings(scoverageSettings)
+  .settings(inConfig(Test)(testSettings): _*)
   .settings(
     majorVersion := 0,
     scalaVersion := "2.12.14",
@@ -37,7 +38,6 @@ lazy val scalacSettings = Def.settings(
 )
 
 lazy val scoverageSettings = Def.settings(
-  Test / parallelExecution := false,
   ScoverageKeys.coverageMinimumStmtTotal := 90,
   ScoverageKeys.coverageFailOnMinimum := true,
   ScoverageKeys.coverageHighlighting := true,
@@ -55,4 +55,11 @@ lazy val scoverageSettings = Def.settings(
     ".*Routes.*",
     ".*GuiceInjector"
   ).mkString(";")
+)
+
+lazy val testSettings: Seq[Def.Setting[_]] = Seq(
+  parallelExecution := false,
+  javaOptions ++= Seq(
+    "-Dconfig.resource=test.application.conf"
+  )
 )

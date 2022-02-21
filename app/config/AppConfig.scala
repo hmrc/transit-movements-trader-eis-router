@@ -52,4 +52,6 @@ class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig
     RetryConfig.fromServicesConfig("eis.gb", config)
   val eisniRetry: RetryConfig =
     RetryConfig.fromServicesConfig("eis.ni", config)
+
+  val testOnlyRequestTimeout: Long = config.getOptional[Long]("test-only.timeout").getOrElse(30000L)
 }
