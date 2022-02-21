@@ -28,14 +28,12 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import play.api.http.{HeaderNames, MimeTypes}
-import play.api.test.Helpers.{ACCEPTED, defaultAwaitTimeout, status}
+import play.api.test.Helpers.{ACCEPTED, GATEWAY_TIMEOUT, defaultAwaitTimeout, status}
 import play.api.test.{FakeHeaders, FakeRequest, Helpers}
 import services.RoutingService
 import uk.gov.hmrc.http.HttpResponse
 
-import java.util.concurrent.TimeoutException
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.xml.Elem
 
 class TestOnlyMessagesControllerSpec
@@ -69,7 +67,7 @@ class TestOnlyMessagesControllerSpec
   "post" when {
 
     "posting XML to trigger timeout" should {
-      "return timeout exception" in {
+      "return gateway timeout" in {
         val mockRoutingService = mock[RoutingService]
 
         val xml =
@@ -77,9 +75,8 @@ class TestOnlyMessagesControllerSpec
             <MesSenMES3>SYST17B-NCTS_TIMEOUT</MesSenMES3>
           </CC007A>
 
-        lazy val result = controller(mockRoutingService).post()(fakeXmlRequest(xml))
-
-        a [TimeoutException] must be thrownBy Await.result(result, Duration.Inf)
+        val result = controller(mockRoutingService).post()(fakeXmlRequest(xml))
+        status(result) shouldBe GATEWAY_TIMEOUT
 
         verify(mockRoutingService, never()).submitMessage(any(), any(), any())
       }

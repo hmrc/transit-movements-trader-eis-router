@@ -22,8 +22,8 @@ import models.requests.ChannelRequest
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
-import java.util.concurrent.TimeoutException
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.Future
 import scala.xml.NodeSeq
 
 @Singleton()
@@ -37,7 +37,7 @@ class TestOnlyMessagesController @Inject()(
     request: ChannelRequest[NodeSeq] =>
 
       (request.body \\ "_" \ "MesSenMES3").text match {
-        case "SYST17B-NCTS_TIMEOUT" => throw new TimeoutException()
+        case "SYST17B-NCTS_TIMEOUT" => Future.successful(GatewayTimeout)
         case _ => messagesController.post()(request)
       }
   }
