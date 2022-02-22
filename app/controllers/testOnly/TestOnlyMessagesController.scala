@@ -29,7 +29,7 @@ import scala.concurrent.Future
 import scala.xml.NodeSeq
 
 @Singleton()
-class TestOnlyMessagesController @Inject()(
+class TestOnlyMessagesController @Inject() (
   cc: ControllerComponents,
   channelAction: ChannelAction,
   messagesController: MessagesController,
@@ -38,7 +38,6 @@ class TestOnlyMessagesController @Inject()(
 
   def post(): Action[NodeSeq] = (Action andThen channelAction).async(parse.xml) {
     request: ChannelRequest[NodeSeq] =>
-
       (request.body \\ "_" \ "Timeout").text match {
         case "true" =>
           Thread.sleep(config.testOnlyRequestTimeout)

@@ -39,7 +39,7 @@ import scala.concurrent.{Await, Future, TimeoutException}
 import scala.xml.Elem
 
 class TestOnlyMessagesControllerSpec
-  extends AnyWordSpec
+    extends AnyWordSpec
     with Matchers
     with GuiceOneAppPerSuite
     with MockitoSugar
@@ -53,7 +53,7 @@ class TestOnlyMessagesControllerSpec
   )
 
   private def controller(mockRoutingService: RoutingService) = {
-    val cc = Helpers.stubControllerComponents()
+    val cc            = Helpers.stubControllerComponents()
     val channelAction = app.injector.instanceOf[ChannelAction]
     new TestOnlyMessagesController(
       cc,
@@ -79,14 +79,14 @@ class TestOnlyMessagesControllerSpec
           </CC007A>
 
         lazy val result = controller(mockRoutingService).post()(fakeXmlRequest(xml))
-        a [TimeoutException] mustBe thrownBy(Await.result(result, Duration.Inf))
+        a[TimeoutException] mustBe thrownBy(Await.result(result, Duration.Inf))
 
         verify(mockRoutingService, never()).submitMessage(any(), any(), any())
       }
     }
 
     "posting XML with Timeout false to not trigger timeout" should {
-      "return timeout exception" in {
+      "interact with routing service" in {
         val mockRoutingService = mock[RoutingService]
 
         val xml =
@@ -106,22 +106,21 @@ class TestOnlyMessagesControllerSpec
 
     "posting any other XML" should {
       "interact with routing service" in {
-        forAll(arbitrary[String]) {
-          str =>
-            val mockRoutingService = mock[RoutingService]
+        forAll(arbitrary[String]) { str =>
+          val mockRoutingService = mock[RoutingService]
 
-            val xml =
-              <CC007A>
+          val xml =
+            <CC007A>
                 <RandomField>{str}</RandomField>
               </CC007A>
 
-            when(mockRoutingService.submitMessage(any(), any(), any()))
-              .thenReturn(Right(Future.successful(HttpResponse(ACCEPTED, ""))))
+          when(mockRoutingService.submitMessage(any(), any(), any()))
+            .thenReturn(Right(Future.successful(HttpResponse(ACCEPTED, ""))))
 
-            val result = controller(mockRoutingService).post()(fakeXmlRequest(xml))
-            status(result) shouldBe ACCEPTED
+          val result = controller(mockRoutingService).post()(fakeXmlRequest(xml))
+          status(result) shouldBe ACCEPTED
 
-            verify(mockRoutingService).submitMessage(any(), any(), any())
+          verify(mockRoutingService).submitMessage(any(), any(), any())
         }
       }
     }
