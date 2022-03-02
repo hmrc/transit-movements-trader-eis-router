@@ -270,7 +270,7 @@ class RoutingServiceSpec
         val mc = mock[MessageConnector]
         when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
         when(mc.postNCTSMonitoring(any(), any(), any(), any()))
-          .thenReturn(Future.successful(HttpResponse(200, "")))
+          .thenReturn(Future.successful(200))
 
         val fsrc = mock[RouteChecker]
         when(fsrc.canForward(any(), any())).thenReturn(true)
@@ -299,7 +299,7 @@ class RoutingServiceSpec
         val mc = mock[MessageConnector]
         when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
         when(mc.postNCTSMonitoring(any(), any(), any(), any()))
-          .thenReturn(Future.successful(HttpResponse(200, "")))
+          .thenReturn(Future.successful(200))
 
         val fsrc = mock[RouteChecker]
         when(fsrc.canForward(any(), any())).thenReturn(true)

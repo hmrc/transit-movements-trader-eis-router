@@ -31,6 +31,7 @@ import play.api.Logging
 import play.api.http.HeaderNames
 import play.api.http.MimeTypes
 import play.api.http.Status
+import play.api.http.Status.INTERNAL_SERVER_ERROR
 import play.api.libs.json.JsValue
 import play.api.libs.json.Json
 import retry.RetryDetails
@@ -197,7 +198,7 @@ class MessageConnector @Inject() (
     timestamp: LocalDateTime,
     routingOption: RoutingOption,
     hc: HeaderCarrier
-  ): Future[HttpResponse] = {
+  ): Future[Int] = {
 
     implicit val headerCarrier: HeaderCarrier =
       hc.withExtraHeaders(hc.headers(Seq("X-Message-Sender")): _*)
@@ -217,13 +218,13 @@ class MessageConnector @Inject() (
       .map { result =>
         if (result.status != Status.OK)
           logger.warn(s"[MessageConnector][postNCTSMonitoring] Failed with status ${result.status}")
-        result
+        result.status
       }
       .recover { case NonFatal(e) =>
         val message =
-          s"${appConfig.nctsMonitoringUrl} failed to send movement to ncts monitoring with message ${e.getMessage}"
+          s"[MessageConnector][postNCTSMonitoring] ${appConfig.nctsMonitoringUrl} failed to send movement to ncts monitoring with message ${e.getMessage}"
         logger.warn(message)
-        HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
+        INTERNAL_SERVER_ERROR
       }
   }
 }

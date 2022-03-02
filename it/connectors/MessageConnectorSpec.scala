@@ -373,7 +373,7 @@ class MessageConnectorSpec
             )
             .futureValue
 
-          result.status mustEqual OK
+          result mustEqual OK
         }
       }
     }
@@ -410,7 +410,7 @@ class MessageConnectorSpec
             )
             .futureValue
 
-          result.status mustEqual statusCode
+          result mustEqual statusCode
         }
     }
 
@@ -448,7 +448,7 @@ class MessageConnectorSpec
               )
               .futureValue
 
-            result.status mustEqual INTERNAL_SERVER_ERROR
+            result mustEqual INTERNAL_SERVER_ERROR
           }
         }
     }
