@@ -189,7 +189,11 @@ class MessageConnector @Inject() (
             }
         },
         shouldCauseCircuitBreakerStrike
-      )
+      ).recover {case NonFatal(e) =>
+        val message = s"Unable to process message ${e.getMessage}"
+        logger.error(message)
+        HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
+      }
     }
   }
 
