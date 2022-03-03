@@ -19,7 +19,7 @@ package services
 import com.google.inject.Inject
 import config.AppConfig
 import connectors.MessageConnector
-import models.MessageType.{arrivalValues, departureValues}
+import models.MessageType.arrivalValues
 import models.ParseError.InvalidMessageCode
 import models._
 import play.api.Logging
