@@ -144,56 +144,54 @@ class MessageConnector @Inject() (
       (t: HttpResponse) => Future.successful(!shouldCauseRetry(t)),
       onFailure(details.routingMessage)
     ) {
+      val requestHeaders = hc.headers(OutgoingHeaders.headers) ++ Seq(
+        "X-Correlation-Id"        -> UUID.randomUUID().toString,
+        "CustomProcessHost"       -> "Digital",
+        HeaderNames.ACCEPT        -> MimeTypes.XML, // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
+        HeaderNames.AUTHORIZATION -> s"Bearer ${details.token}"
+      )
+
+      implicit val headerCarrier: HeaderCarrier = hc
+        .copy(authorization = None, otherHeaders = Seq.empty)
+        .withExtraHeaders(requestHeaders: _*)
+
+      lazy val logMessage = s"""|Posting NCTS message, ${details.routingMessage}
+                                |X-Correlation-Id: ${getHeader("X-Correlation-Id", details.url)}
+                                |${HMRCHeaderNames.xRequestId}: ${getHeader(HMRCHeaderNames.xRequestId, details.url)}
+                                |X-Message-Type: ${getHeader("X-Message-Type", details.url)}
+                                |X-Message-Sender: ${getHeader("X-Message-Sender", details.url)}
+                                |Accept: ${getHeader("Accept", details.url)}
+                                |CustomProcessHost: ${getHeader("CustomProcessHost", details.url)}
+                                |""".stripMargin
 
       details.circuitBreaker.withCircuitBreaker(
-        {
-          val requestHeaders = hc.headers(OutgoingHeaders.headers) ++ Seq(
-            "X-Correlation-Id"        -> UUID.randomUUID().toString,
-            "CustomProcessHost"       -> "Digital",
-            HeaderNames.ACCEPT        -> MimeTypes.XML, // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
-            HeaderNames.AUTHORIZATION -> s"Bearer ${details.token}"
-          )
+          {
+            http
+              .POSTString[HttpResponse](details.url, xml.toString)
+              .map { result =>
+                val logMessageWithStatus = logMessage + s"Response status: ${result.status}"
 
-          implicit val headerCarrier: HeaderCarrier = hc
-            .copy(authorization = None, otherHeaders = Seq.empty)
-            .withExtraHeaders(requestHeaders: _*)
+                if (statusCodeFailure(result))
+                  logger.warn(logMessageWithStatus)
+                else
+                  logger.info(logMessageWithStatus)
 
-          http
-            .POSTString[HttpResponse](details.url, xml.toString)
-            .map { result =>
-              lazy val logMessage =
-                s"""|Posting NCTS message, ${details.routingMessage}
-                    |X-Correlation-Id: ${getHeader("X-Correlation-Id", details.url)}
-                    |${HMRCHeaderNames.xRequestId}: ${getHeader(
-                  HMRCHeaderNames.xRequestId,
-                  details.url
-                )}
-                    |X-Message-Type: ${getHeader("X-Message-Type", details.url)}
-                    |X-Message-Sender: ${getHeader("X-Message-Sender", details.url)}
-                    |Accept: ${getHeader("Accept", details.url)}
-                    |CustomProcessHost: ${getHeader("CustomProcessHost", details.url)}
-                    |Response status: ${result.status}
-                  """.stripMargin
-
-              if (statusCodeFailure(result))
-                logger.warn(logMessage)
-              else
-                logger.info(logMessage)
-
-              result
-            }
-            .recover { case NonFatal(e) =>
-              val message = s"${details.url} failed to retrieve data with message ${e.getMessage}"
-              logger.warn(message)
-              HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
-            }
-        },
-        shouldCauseCircuitBreakerStrike
-      ).recover {case NonFatal(e) =>
-        val message = s"Unable to process message ${e.getMessage}"
-        logger.error(message)
-        HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
-      }
+                result
+              }
+              .recover { case NonFatal(e) =>
+                val message = logMessage +
+                    s"Request Error: ${details.url} failed to retrieve data with message ${e.getMessage}"
+                logger.error(message)
+                HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
+              }
+          },
+          shouldCauseCircuitBreakerStrike
+        )
+        .recover { case NonFatal(e) =>
+          val message = logMessage + s"Error: Unable to process message ${e.getMessage}"
+          logger.error(message)
+          HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
+        }
     }
   }
 
