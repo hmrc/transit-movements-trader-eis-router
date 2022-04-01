@@ -16,14 +16,21 @@
 
 package services
 
+import cats.Applicative
+import cats.implicits.toFunctorOps
 import com.google.inject.ImplementedBy
 import config.RetryConfig
+import retry.PolicyDecision
+import retry.PolicyDecision.DelayAndRetry
+import retry.PolicyDecision.GiveUp
 import retry.RetryPolicies
 import retry.RetryPolicy
+import retry.RetryStatus
 
 import javax.inject.Singleton
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
+import scala.concurrent.duration.FiniteDuration
 
 @ImplementedBy(classOf[RetriesServiceImpl])
 trait RetriesService {
@@ -35,11 +42,32 @@ class RetriesServiceImpl extends RetriesService {
 
   override def createRetryPolicy(
     config: RetryConfig
-  )(implicit ec: ExecutionContext): RetryPolicy[Future] =
-    RetryPolicies.limitRetriesByCumulativeDelay(
+  )(implicit ec: ExecutionContext): RetryPolicy[Future] = {
+    limitRetriesByTotalTime(
       config.timeout,
       RetryPolicies.limitRetries[Future](config.maxRetries) join RetryPolicies
         .constantDelay[Future](config.delay)
     )
+  }
+
+  def limitRetriesByTotalTime[M[_]: Applicative](
+    threshold: FiniteDuration,
+    policy: RetryPolicy[M]
+  ): RetryPolicy[M] = {
+
+    val endTime = System.currentTimeMillis() + threshold.toMillis
+
+    def decideNextRetry(status: RetryStatus): M[PolicyDecision] =
+      policy.decideNextRetry(status).map {
+        case r @ DelayAndRetry(delay) =>
+          if (System.currentTimeMillis() + delay.toMillis > endTime) GiveUp else r
+        case GiveUp => GiveUp
+      }
+
+    RetryPolicy.withShow[M](
+      decideNextRetry,
+      s"limitRetriesByTotalTime(threshold=$threshold, $policy)"
+    )
+  }
 
 }

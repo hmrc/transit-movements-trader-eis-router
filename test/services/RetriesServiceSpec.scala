@@ -35,7 +35,7 @@ class RetriesServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures {
 
     val sut = new RetriesServiceImpl()
 
-    "with 3 retries, 0.1s delay and 10s cumulative delay should retry 3 times for 4 invocations total" in {
+    "with 3 retries, 0.1s delay and 10 seconds total time should retry 3 times for 4 invocations total" in {
 
       val policy = sut.createRetryPolicy(RetryConfig(3, 100.milliseconds, 10.seconds))
 
@@ -54,7 +54,7 @@ class RetriesServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures {
       counted mustBe 4
     }
 
-    "with 3 retries, 0.2s delay and 0.1s cumulative delay should retry 0 times for 1 invocation total" in {
+    "with 3 retries, 0.2s delay and 0.1s total time should retry 0 times for 1 invocation total" in {
 
       val policy = sut.createRetryPolicy(RetryConfig(3, 200.milliseconds, 100.milliseconds))
 
@@ -73,7 +73,7 @@ class RetriesServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures {
       counted mustBe 1
     }
 
-    "with 3 retries, 0.16s delay and 0.3s cumulative delay should retry 1 times for 2 invocations total" in {
+    "with 3 retries, 0.16s delay and 0.3s total time should retry 1 times for 2 invocations total" in {
 
       val policy = sut.createRetryPolicy(RetryConfig(3, 160.milliseconds, 300.milliseconds))
 
@@ -90,6 +90,46 @@ class RetriesServiceSpec extends AnyFreeSpec with Matchers with ScalaFutures {
       )
 
       counted mustBe 2
+    }
+
+    "with 3 retries, 0s delay and 0.2s total time with a thread sleep of 0.11 seconds should retry 1 times for 2 invocations total" in {
+
+      val policy = sut.createRetryPolicy(RetryConfig(3, 0.milliseconds, 200.milliseconds))
+
+      var counted = 0
+      Await.result(
+        retryingOnFailures[Unit][Future](
+          policy,
+          (_: Unit) => Future.successful(false),
+          (_: Unit, _) => Future.unit
+        ) {
+          Thread.sleep(110)
+          Future.successful(counted += 1)
+        },
+        1.seconds
+      )
+
+      counted mustBe 2
+    }
+
+    "with 3 retries, 0s delay and 0.1s total time with a thread sleep of 0.11 seconds should retry 0 times for 1 invocation total" in {
+
+      val policy = sut.createRetryPolicy(RetryConfig(3, 0.milliseconds, 100.milliseconds))
+
+      var counted = 0
+      Await.result(
+        retryingOnFailures[Unit][Future](
+          policy,
+          (_: Unit) => Future.successful(false),
+          (_: Unit, _) => Future.unit
+        ) {
+          Thread.sleep(110)
+          Future.successful(counted += 1)
+        },
+        1.seconds
+      )
+
+      counted mustBe 1
     }
 
   }

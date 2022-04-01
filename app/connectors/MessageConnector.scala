@@ -157,14 +157,18 @@ class MessageConnector @Inject() (
 
       lazy val logMessage = s"""|Posting NCTS message, ${details.routingMessage}
                                 |X-Correlation-Id: ${getHeader("X-Correlation-Id", details.url)}
-                                |${HMRCHeaderNames.xRequestId}: ${getHeader(HMRCHeaderNames.xRequestId, details.url)}
+                                |${HMRCHeaderNames.xRequestId}: ${getHeader(
+        HMRCHeaderNames.xRequestId,
+        details.url
+      )}
                                 |X-Message-Type: ${getHeader("X-Message-Type", details.url)}
                                 |X-Message-Sender: ${getHeader("X-Message-Sender", details.url)}
                                 |Accept: ${getHeader("Accept", details.url)}
                                 |CustomProcessHost: ${getHeader("CustomProcessHost", details.url)}
                                 |""".stripMargin
 
-      details.circuitBreaker.withCircuitBreaker(
+      details.circuitBreaker
+        .withCircuitBreaker(
           {
             http
               .POSTString[HttpResponse](details.url, xml.toString)
@@ -180,7 +184,7 @@ class MessageConnector @Inject() (
               }
               .recover { case NonFatal(e) =>
                 val message = logMessage +
-                    s"Request Error: ${details.url} failed to retrieve data with message ${e.getMessage}"
+                  s"Request Error: ${details.url} failed to retrieve data with message ${e.getMessage}"
                 logger.error(message)
                 HttpResponse(Status.INTERNAL_SERVER_ERROR, message)
               }
