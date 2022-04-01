@@ -155,12 +155,10 @@ class MessageConnector @Inject() (
         .copy(authorization = None, otherHeaders = Seq.empty)
         .withExtraHeaders(requestHeaders: _*)
 
+      val requestId       = getHeader(HMRCHeaderNames.xRequestId, details.url)
       lazy val logMessage = s"""|Posting NCTS message, ${details.routingMessage}
                                 |X-Correlation-Id: ${getHeader("X-Correlation-Id", details.url)}
-                                |${HMRCHeaderNames.xRequestId}: ${getHeader(
-        HMRCHeaderNames.xRequestId,
-        details.url
-      )}
+                                |${HMRCHeaderNames.xRequestId}: $requestId
                                 |X-Message-Type: ${getHeader("X-Message-Type", details.url)}
                                 |X-Message-Sender: ${getHeader("X-Message-Sender", details.url)}
                                 |Accept: ${getHeader("Accept", details.url)}
