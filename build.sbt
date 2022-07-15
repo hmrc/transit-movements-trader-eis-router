@@ -13,6 +13,7 @@ lazy val microservice = Project(appName, file("."))
   .settings(DefaultBuildSettings.integrationTestSettings())
   .settings(SbtDistributablesPlugin.publishingSettings)
   .settings(inConfig(IntegrationTest)(ScalafmtPlugin.scalafmtConfigSettings))
+  .settings(inThisBuild(buildSettings))
   .settings(scalacSettings)
   .settings(scoverageSettings)
   .settings(
@@ -27,13 +28,20 @@ lazy val scalacSettings = Def.settings(
   // Disable warnings arising from generated routing code
   scalacOptions += "-Wconf:src=routes/.*:silent",
   // Disable fatal warnings and warnings from discarding values
-  scalacOptions ~= { opts =>
-    opts.filterNot(Set("-Xfatal-warnings", "-Ywarn-value-discard"))
+  scalacOptions ~= {
+    opts =>
+      opts.filterNot(Set("-Xfatal-warnings", "-Ywarn-value-discard"))
   },
   // Disable dead code warning as it is triggered by Mockito any()
-  Test / scalacOptions ~= { opts =>
-    opts.filterNot(Set("-Ywarn-dead-code"))
+  Test / scalacOptions ~= {
+    opts =>
+      opts.filterNot(Set("-Ywarn-dead-code"))
   }
+)
+
+// Settings for the whole build
+lazy val buildSettings = Def.settings(
+  scalafmtOnCompile := true
 )
 
 lazy val scoverageSettings = Def.settings(
