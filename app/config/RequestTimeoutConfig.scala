@@ -18,38 +18,29 @@ package config
 
 import play.api.Configuration
 
+import java.nio.charset.StandardCharsets
 import scala.concurrent.duration.FiniteDuration
 
-case class CircuitBreakerConfig(
-  maxFailures: Int,
-  callTimeout: FiniteDuration,
-  resetTimeout: FiniteDuration,
-  maxResetTimeout: FiniteDuration,
-  exponentialBackoffFactor: Double,
-  randomFactor: Double
-)
+case class RequestTimeoutConfig(messageSizeLimit: Int, smallMessageTimeout: FiniteDuration, largeMessageTimeout: FiniteDuration) {
+  def timeout(message: String): FiniteDuration = timeout(message.getBytes(StandardCharsets.UTF_8).length)
 
-object CircuitBreakerConfig {
+  def timeout(messageSize: Int): FiniteDuration =
+    if (messageSize <= messageSizeLimit) smallMessageTimeout
+    else largeMessageTimeout
+}
+
+object RequestTimeoutConfig {
 
   def fromServicesConfig(serviceName: String, config: Configuration) =
-    CircuitBreakerConfig(
+    RequestTimeoutConfig(
       config.get[Int](
-        s"microservice.services.$serviceName.circuit-breaker.max-failures"
+        s"microservice.services.$serviceName.request-timeout.small-message-size-limit"
       ),
       config.get[FiniteDuration](
-        s"microservice.services.$serviceName.circuit-breaker.call-timeout"
+        s"microservice.services.$serviceName.request-timeout.small-message-timeout"
       ),
       config.get[FiniteDuration](
-        s"microservice.services.$serviceName.circuit-breaker.reset-timeout"
-      ),
-      config.get[FiniteDuration](
-        s"microservice.services.$serviceName.circuit-breaker.max-reset-timeout"
-      ),
-      config.get[Double](
-        s"microservice.services.$serviceName.circuit-breaker.exponential-backoff-factor"
-      ),
-      config.get[Double](
-        s"microservice.services.$serviceName.circuit-breaker.random-factor"
+        s"microservice.services.$serviceName.request-timeout.large-message-timeout"
       )
     )
 }

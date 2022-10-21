@@ -20,6 +20,7 @@ import models.RoutingOption.Gb
 import models.RoutingOption.Xi
 
 case class GuaranteeReference(value: String) extends AnyVal {
+
   def countryCode: String =
     value.drop(2).take(2)
 

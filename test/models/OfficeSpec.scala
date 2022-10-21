@@ -16,7 +16,8 @@
 
 package models
 
-import models.RoutingOption.{Gb, Xi}
+import models.RoutingOption.Gb
+import models.RoutingOption.Xi
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 

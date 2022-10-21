@@ -16,7 +16,8 @@
 
 package services
 
-import com.google.inject.{Inject, Singleton}
+import com.google.inject.Inject
+import com.google.inject.Singleton
 import play.api.Configuration
 
 @Singleton

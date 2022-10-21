@@ -16,8 +16,10 @@
 
 package services
 
-import models.ChannelType.{Api, Web}
-import models.RoutingOption.{Gb, Xi}
+import models.ChannelType.Api
+import models.ChannelType.Web
+import models.RoutingOption.Gb
+import models.RoutingOption.Xi
 import org.scalacheck.Gen
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
@@ -25,56 +27,48 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import org.mockito.Mockito.when
 
-class RouteCheckerSpec
-    extends AnyFreeSpec
-    with MockitoSugar
-    with Matchers
-    with ScalaCheckDrivenPropertyChecks {
+class RouteCheckerSpec extends AnyFreeSpec with MockitoSugar with Matchers with ScalaCheckDrivenPropertyChecks {
 
   val routingOptionGen = Gen.oneOf[Boolean](true, false)
 
   "canForward" - {
     "when input route is Xi and channel is web, must return the RoutingOption for webNi in the appConfig" in {
-      forAll(routingOptionGen) { opt =>
-        {
+      forAll(routingOptionGen) {
+        opt =>
           val mockConfig = mock[RoutingConfig]
           when(mockConfig.webXi).thenReturn(opt)
 
           new RouteChecker(mockConfig).canForward(Xi, Web) mustBe opt
-        }
       }
     }
 
     "when input route is Xi and channel is api, must return the RoutingOption for apiXi in the appConfig" in {
-      forAll(routingOptionGen) { opt =>
-        {
+      forAll(routingOptionGen) {
+        opt =>
           val mockConfig = mock[RoutingConfig]
           when(mockConfig.apiXi).thenReturn(opt)
 
           new RouteChecker(mockConfig).canForward(Xi, Api) mustBe opt
-        }
       }
     }
 
     "when input route is Gb and channel is web, must return the RoutingOption for webGb in the appConfig" in {
-      forAll(routingOptionGen) { opt =>
-        {
+      forAll(routingOptionGen) {
+        opt =>
           val mockConfig = mock[RoutingConfig]
           when(mockConfig.webGb).thenReturn(opt)
 
           new RouteChecker(mockConfig).canForward(Gb, Web) mustBe opt
-        }
       }
     }
 
     "when input route is Gb and channel is api, must return the RoutingOption for apiGb in the appConfig" in {
-      forAll(routingOptionGen) { opt =>
-        {
+      forAll(routingOptionGen) {
+        opt =>
           val mockConfig = mock[RoutingConfig]
           when(mockConfig.apiGb).thenReturn(opt)
 
           new RouteChecker(mockConfig).canForward(Gb, Api) mustBe opt
-        }
       }
     }
   }

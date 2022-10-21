@@ -23,7 +23,8 @@ import models.MessageType.arrivalValues
 import models.ParseError.InvalidMessageCode
 import models._
 import play.api.Logging
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.HttpResponse
 
 import java.time.LocalDateTime
 import scala.concurrent.Future
@@ -39,30 +40,30 @@ class RoutingService @Inject() (
     xml: NodeSeq,
     channel: ChannelType,
     headerCarrier: HeaderCarrier
-  ): Either[FailureMessage, Future[HttpResponse]] = {
+  ): Either[FailureMessage, Future[HttpResponse]] =
     XmlParser.getValidRoot(xml) match {
       case None =>
         Left(InvalidMessageCode(s"Invalid Message Type"))
 
-      case Some(XmlParser.RootNode(messageType, rootXml))
-          if MessageType.guaranteeValues.contains(messageType) =>
+      case Some(XmlParser.RootNode(messageType, rootXml)) if MessageType.guaranteeValues.contains(messageType) =>
         val parseGrn: Either[ParseError, GuaranteeReference] =
           XmlParser.guaranteeReference(rootXml)
 
-        parseGrn.flatMap { grn =>
-          val routingOption = grn.getRoutingOption
+        parseGrn.flatMap {
+          grn =>
+            val routingOption = grn.getRoutingOption
 
-          logger.debug(
-            s"Guarantee reference ${grn.value} routing option ${routingOption.prefix} with channel ${channel.name}"
-          )
-
-          Either.cond(
-            routeChecker.canForward(routingOption, channel),
-            messageConnector.post(xml, routingOption, headerCarrier),
-            RejectionMessage(
-              s"Routing to ${grn.countryCode} rejected on ${channel.name} channel"
+            logger.debug(
+              s"Guarantee reference ${grn.value} routing option ${routingOption.prefix} with channel ${channel.name}"
             )
-          )
+
+            Either.cond(
+              routeChecker.canForward(routingOption, channel),
+              messageConnector.post(xml, routingOption, headerCarrier),
+              RejectionMessage(
+                s"Routing to ${grn.countryCode} rejected on ${channel.name} channel"
+              )
+            )
         }
 
       case Some(XmlParser.RootNode(messageType, rootXml)) =>
@@ -75,34 +76,34 @@ class RoutingService @Inject() (
             XmlParser.officeOfDeparture(rootXml)
           }
 
-        parseOffice.flatMap { office =>
-          val routingOption = office.getRoutingOption
+        parseOffice.flatMap {
+          office =>
+            val routingOption = office.getRoutingOption
 
-          logger.debug(
-            s"Office of departure/presentation ${office.value} routing option ${routingOption.prefix} with channel ${channel.name}"
-          )
-
-          Either.cond(
-            routeChecker.canForward(routingOption, channel), {
-
-              val resp = messageConnector.post(xml, routingOption, headerCarrier)
-
-              if (appConfig.nctsMonitoringEnabled) {
-                messageConnector.postNCTSMonitoring(
-                  messageType.code,
-                  LocalDateTime.now,
-                  routingOption,
-                  headerCarrier
-                )
-              }
-
-              resp
-            },
-            RejectionMessage(
-              s"Routing to ${office.value.take(2)} rejected on ${channel.name} channel"
+            logger.debug(
+              s"Office of departure/presentation ${office.value} routing option ${routingOption.prefix} with channel ${channel.name}"
             )
-          )
+
+            Either.cond(
+              routeChecker.canForward(routingOption, channel), {
+
+                val resp = messageConnector.post(xml, routingOption, headerCarrier)
+
+                if (appConfig.nctsMonitoringEnabled) {
+                  messageConnector.postNCTSMonitoring(
+                    messageType.code,
+                    LocalDateTime.now,
+                    routingOption,
+                    headerCarrier
+                  )
+                }
+
+                resp
+              },
+              RejectionMessage(
+                s"Routing to ${office.value.take(2)} rejected on ${channel.name} channel"
+              )
+            )
         }
     }
-  }
 }

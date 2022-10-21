@@ -28,28 +28,40 @@ class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig
   val authBaseUrl: String = servicesConfig.baseUrl("auth")
 
   val auditingEnabled: Boolean = config.get[Boolean]("auditing.enabled")
+
   val nctsMonitoringEnabled: Boolean =
     config.get[Boolean]("microservice.features.routing.ncts-monitoring")
   val graphiteHost: String = config.get[String]("microservice.metrics.graphite.host")
 
   private val eisBaseUrl: String = servicesConfig.baseUrl("eis")
   val eisniUrl: String           = eisBaseUrl ++ config.get[String]("microservice.services.eis.ni.uri")
+
   val eisniBearerToken: String =
     config.get[String]("microservice.services.eis.ni.headers.bearerToken")
   val eisgbUrl: String = eisBaseUrl ++ config.get[String]("microservice.services.eis.gb.uri")
+
   val eisgbBearerToken: String =
     config.get[String]("microservice.services.eis.gb.headers.bearerToken")
   val nctsMonitoringBaseUrl: String = servicesConfig.baseUrl("ncts-monitoring")
+
   val nctsMonitoringUrl: String =
     nctsMonitoringBaseUrl ++ config.get[String]("microservice.services.ncts-monitoring.uri")
 
   val eisgbCircuitBreaker: CircuitBreakerConfig =
     CircuitBreakerConfig.fromServicesConfig("eis.gb", config)
+
   val eisniCircuitBreaker: CircuitBreakerConfig =
     CircuitBreakerConfig.fromServicesConfig("eis.ni", config)
 
   val eisgbRetry: RetryConfig =
     RetryConfig.fromServicesConfig("eis.gb", config)
+
   val eisniRetry: RetryConfig =
     RetryConfig.fromServicesConfig("eis.ni", config)
+
+  val eisgbTimeout: RequestTimeoutConfig =
+    RequestTimeoutConfig.fromServicesConfig("eis.gb", config)
+
+  val eisniTimeout: RequestTimeoutConfig =
+    RequestTimeoutConfig.fromServicesConfig("eis.ni", config)
 }

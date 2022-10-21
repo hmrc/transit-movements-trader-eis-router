@@ -39,24 +39,27 @@ trait CircuitBreakers { self: Logging =>
     exponentialBackoffFactor = gbCircuitBreakerConfig.exponentialBackoffFactor,
     randomFactor = gbCircuitBreakerConfig.randomFactor
   )(materializer.executionContext)
-    .onOpen(logger.error(s"GB Circuit breaker for ${clazz} opening due to failures"))
-    .onHalfOpen(logger.warn(s"GB Circuit breaker for ${clazz} resetting after failures"))
+    .onOpen(logger.error(s"GB Circuit breaker for $clazz opening due to failures"))
+    .onHalfOpen(logger.warn(s"GB Circuit breaker for $clazz resetting after failures"))
     .onClose {
       logger.warn(
-        s"GB Circuit breaker for ${clazz} closing after trial connection success"
+        s"GB Circuit breaker for $clazz closing after trial connection success"
       )
     }
-    .onCallFailure(_ => logger.error(s"GB Circuit breaker for ${clazz} recorded failed call"))
+    .onCallFailure(
+      _ => logger.error(s"GB Circuit breaker for $clazz recorded failed call")
+    )
     .onCallBreakerOpen {
       logger.error(
-        s"GB Circuit breaker for ${clazz} rejected call due to previous failures"
+        s"GB Circuit breaker for $clazz rejected call due to previous failures"
       )
     }
-    .onCallTimeout { elapsed =>
-      val duration = Duration.fromNanos(elapsed)
-      logger.error(
-        s"GB Circuit breaker for ${clazz} recorded failed call due to timeout after ${duration.toMillis}ms"
-      )
+    .onCallTimeout {
+      elapsed =>
+        val duration = Duration.fromNanos(elapsed)
+        logger.error(
+          s"GB Circuit breaker for $clazz recorded failed call due to timeout after ${duration.toMillis}ms"
+        )
     }
 
   lazy val niCircuitBreaker = new CircuitBreaker(
@@ -68,24 +71,27 @@ trait CircuitBreakers { self: Logging =>
     exponentialBackoffFactor = niCircuitBreakerConfig.exponentialBackoffFactor,
     randomFactor = niCircuitBreakerConfig.randomFactor
   )(materializer.executionContext)
-    .onOpen(logger.error(s"NI Circuit breaker for ${clazz} opening due to failures"))
-    .onHalfOpen(logger.warn(s"NI Circuit breaker for ${clazz} resetting after failures"))
+    .onOpen(logger.error(s"NI Circuit breaker for $clazz opening due to failures"))
+    .onHalfOpen(logger.warn(s"NI Circuit breaker for $clazz resetting after failures"))
     .onClose {
       logger.warn(
-        s"NI Circuit breaker for ${clazz} closing after trial connection success"
+        s"NI Circuit breaker for $clazz closing after trial connection success"
       )
     }
-    .onCallFailure(_ => logger.error(s"NI Circuit breaker for ${clazz} recorded failed call"))
+    .onCallFailure(
+      _ => logger.error(s"NI Circuit breaker for $clazz recorded failed call")
+    )
     .onCallBreakerOpen {
       logger.error(
-        s"NI Circuit breaker for ${clazz} rejected call due to previous failures"
+        s"NI Circuit breaker for $clazz rejected call due to previous failures"
       )
     }
-    .onCallTimeout { elapsed =>
-      val duration = Duration.fromNanos(elapsed)
-      logger.error(
-        s"NI Circuit breaker for ${clazz} recorded failed call due to timeout after ${duration.toMillis}ms"
-      )
+    .onCallTimeout {
+      elapsed =>
+        val duration = Duration.fromNanos(elapsed)
+        logger.error(
+          s"NI Circuit breaker for $clazz recorded failed call due to timeout after ${duration.toMillis}ms"
+        )
     }
 
 }

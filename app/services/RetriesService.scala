@@ -42,13 +42,12 @@ class RetriesServiceImpl extends RetriesService {
 
   override def createRetryPolicy(
     config: RetryConfig
-  )(implicit ec: ExecutionContext): RetryPolicy[Future] = {
+  )(implicit ec: ExecutionContext): RetryPolicy[Future] =
     limitRetriesByTotalTime(
       config.timeout,
       RetryPolicies.limitRetries[Future](config.maxRetries) join RetryPolicies
         .constantDelay[Future](config.delay)
     )
-  }
 
   def limitRetriesByTotalTime[M[_]: Applicative](
     threshold: FiniteDuration,

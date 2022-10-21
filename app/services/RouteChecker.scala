@@ -17,18 +17,20 @@
 package services
 
 import com.google.inject.Inject
-import models.ChannelType.{Api, Web}
-import models.RoutingOption.{Gb, Xi}
-import models.{ChannelType, RoutingOption}
+import models.ChannelType.Api
+import models.ChannelType.Web
+import models.RoutingOption.Gb
+import models.RoutingOption.Xi
+import models.ChannelType
+import models.RoutingOption
 
 class RouteChecker @Inject() (routingConfig: RoutingConfig) {
 
-  def canForward(routingOption: RoutingOption, channelType: ChannelType): Boolean = {
+  def canForward(routingOption: RoutingOption, channelType: ChannelType): Boolean =
     (channelType, routingOption) match {
       case (Api, Xi) => routingConfig.apiXi
       case (Web, Xi) => routingConfig.webXi
       case (Api, Gb) => routingConfig.apiGb
       case (Web, Gb) => routingConfig.webGb
     }
-  }
 }
