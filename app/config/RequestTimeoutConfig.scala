@@ -18,11 +18,9 @@ package config
 
 import play.api.Configuration
 
-import java.nio.charset.StandardCharsets
 import scala.concurrent.duration.FiniteDuration
 
 case class RequestTimeoutConfig(messageSizeLimit: Int, smallMessageTimeout: FiniteDuration, largeMessageTimeout: FiniteDuration) {
-  def timeout(message: String): FiniteDuration = timeout(message.getBytes(StandardCharsets.UTF_8).length)
 
   def timeout(messageSize: Int): FiniteDuration =
     if (messageSize <= messageSizeLimit) smallMessageTimeout

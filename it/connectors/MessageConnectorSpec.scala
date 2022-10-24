@@ -27,6 +27,7 @@ import models.RoutingOption.Gb
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.scalacheck.Gen
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.must.Matchers
@@ -66,7 +67,8 @@ class MessageConnectorSpec
     with MockitoSugar
     with IntegrationPatience
     with ScalaCheckPropertyChecks
-    with TableDrivenPropertyChecks {
+    with TableDrivenPropertyChecks
+    with BeforeAndAfterAll {
 
   private object NoRetries extends RetriesService {
 
@@ -331,6 +333,61 @@ class MessageConnectorSpec
 
           result.futureValue.status mustEqual INTERNAL_SERVER_ERROR
         }
+    }
+
+    "With message size based timeouts" should {
+      import java.time.{Duration => JavaDuration}
+
+      val fiveSeconds: JavaDuration     = JavaDuration.ofSeconds(5)
+      val tenMilliseconds: JavaDuration = JavaDuration.ofMillis(10)
+
+      "use the small message timeout with small messages" in {
+
+        val app = appWithNoRetries
+          .configure("microservice.services.eis.gb.request-timeout.small-message-size-limit" -> 100)
+          .configure("microservice.services.eis.gb.request-timeout.small-message-timeout" -> fiveSeconds)
+          .configure("microservice.services.eis.gb.request-timeout.large-message-timeout" -> tenMilliseconds)
+          .build()
+
+        running(app) {
+
+          server.stubFor(
+            post(
+              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
+            )
+              .willReturn(aResponse().withStatus(ACCEPTED).withFixedDelay(100))
+          )
+
+          val connector = app.injector.instanceOf[MessageConnector]
+          connector.post("<document></document>", Gb, HeaderCarrier(), 1).futureValue.status mustEqual ACCEPTED
+          connector.post("<document></document>", Gb, HeaderCarrier(), 1000).futureValue.status mustEqual INTERNAL_SERVER_ERROR
+        }
+
+      }
+
+      "use the large message timeout with large messages" in {
+
+        val app = appWithNoRetries
+          .configure("microservice.services.eis.gb.request-timeout.small-message-size-limit" -> 100)
+          .configure("microservice.services.eis.gb.request-timeout.small-message-timeout" -> tenMilliseconds)
+          .configure("microservice.services.eis.gb.request-timeout.large-message-timeout" -> fiveSeconds)
+          .build()
+
+        running(app) {
+
+          server.stubFor(
+            post(
+              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
+            )
+              .willReturn(aResponse().withStatus(ACCEPTED).withFixedDelay(100))
+          )
+
+          val connector = app.injector.instanceOf[MessageConnector]
+          connector.post("<document></document>", Gb, HeaderCarrier(), 1000).futureValue.status mustEqual ACCEPTED
+          connector.post("<document></document>", Gb, HeaderCarrier(), 1).futureValue.status mustEqual INTERNAL_SERVER_ERROR
+        }
+
+      }
     }
   }
 

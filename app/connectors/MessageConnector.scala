@@ -47,6 +47,7 @@ import uk.gov.hmrc.http.StringContextOps
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderNames => HMRCHeaderNames}
 
+import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
@@ -153,13 +154,17 @@ class MessageConnector @Inject() (
   }
 
   def post(xml: NodeSeq, routingOption: RoutingOption, hc: HeaderCarrier): Future[HttpResponse] = {
+    val payload = xml.mkString
+    post(payload, routingOption, hc, messageSize(payload))
+  }
+
+  def post(payload: String, routingOption: RoutingOption, hc: HeaderCarrier, size: Int): Future[HttpResponse] = {
     val details = routingOption match {
       case Xi => niEisDetails
       case Gb => gbEisDetails
     }
 
-    val payload = xml.mkString
-    val timeout = details.requestTimeoutConfig.timeout(payload)
+    val timeout = details.requestTimeoutConfig.timeout(size)
 
     // It is assumed that all errors are fatal (see recover block) and so we just need to retry on failures.
     retryingOnFailures(
@@ -263,4 +268,6 @@ class MessageConnector @Inject() (
           INTERNAL_SERVER_ERROR
       }
   }
+
+  private def messageSize(message: String) = message.getBytes(StandardCharsets.UTF_8).length
 }
