@@ -5,11 +5,11 @@ import sbt._
 
 object AppDependencies {
 
-  private val catsVersion      = "2.6.1"
+  private val catsVersion      = "2.8.0"
   private val catsRetryVersion = "3.1.0"
 
   val compile = Seq(
-    "uk.gov.hmrc"      %% "bootstrap-backend-play-28" % "5.24.0",
+    "uk.gov.hmrc"      %% "bootstrap-backend-play-28" % "7.8.0",
     "org.typelevel"    %% "cats-core"                 % catsVersion,
     "com.github.cb372" %% "cats-retry"                % catsRetryVersion,
     "com.github.cb372" %% "alleycats-retry"           % catsRetryVersion

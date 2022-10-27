@@ -23,6 +23,7 @@ import scala.concurrent.duration.FiniteDuration
 case class RetryConfig(maxRetries: Int, delay: FiniteDuration, timeout: FiniteDuration)
 
 object RetryConfig {
+
   def fromServicesConfig(serviceName: String, config: Configuration) =
     RetryConfig(
       config.get[Int](

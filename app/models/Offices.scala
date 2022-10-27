@@ -16,10 +16,12 @@
 
 package models
 
-import models.RoutingOption.{Gb, Xi}
+import models.RoutingOption.Gb
+import models.RoutingOption.Xi
 
 sealed abstract class Office extends Product with Serializable {
   def value: String
+
   def getRoutingOption: RoutingOption =
     if (value.startsWith(Xi.prefix)) Xi else Gb
 }

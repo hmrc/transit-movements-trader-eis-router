@@ -19,21 +19,31 @@ package services
 import config.AppConfig
 import connectors.MessageConnector
 import models.ChannelType.Api
-import models.MessageType.{arrivalValues, departureValues}
+import models.MessageType.arrivalValues
+import models.MessageType.departureValues
 import models.ParseError._
-import models.RoutingOption.{Gb, Xi}
-import models.{ChannelType, FailureMessage, MessageType, RoutingOption}
-import org.mockito.ArgumentMatchers.{any, eq => eqTo}
-import org.mockito.Mockito.{never, verify, when}
+import models.RoutingOption.Gb
+import models.RoutingOption.Xi
+import models.ChannelType
+import models.FailureMessage
+import models.MessageType
+import models.RoutingOption
+import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.{eq => eqTo}
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.when
 import org.scalacheck.Gen
-import org.scalatest.{BeforeAndAfterEach, OptionValues}
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.OptionValues
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.HttpResponse
 
 import scala.concurrent.Future
 import scala.xml.Elem
@@ -58,14 +68,23 @@ class RoutingServiceSpec
 
   val channelGen = Gen.oneOf(ChannelType.values)
   val routeGen   = Gen.oneOf(RoutingOption.values)
+
   val notNCTSMessageTypeGen = Gen.oneOf(
-    MessageType.values.filterNot(msg => (arrivalValues ++ departureValues) contains msg)
+    MessageType.values.filterNot(
+      msg => (arrivalValues ++ departureValues) contains msg
+    )
   )
+
   val nctsMessageTypeArrGen = Gen.oneOf(
-    MessageType.values.filter(msg => arrivalValues contains msg)
+    MessageType.values.filter(
+      msg => arrivalValues contains msg
+    )
   )
+
   val nctsMessageTypeDepGen = Gen.oneOf(
-    MessageType.values.filter(msg => departureValues contains msg)
+    MessageType.values.filter(
+      msg => departureValues contains msg
+    )
   )
 
   "submitMessage" - {
@@ -119,16 +138,17 @@ class RoutingServiceSpec
         </CC015B>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(true)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(true)
 
-        service(fsrc, mc).submitMessage(input, channel, hc)
+          service(fsrc, mc).submitMessage(input, channel, hc)
 
-        verify(mc).post(any(), eqTo(Xi), eqTo(hc))
+          verify(mc).post(any(), eqTo(Xi), eqTo(hc))
       }
     }
 
@@ -141,16 +161,17 @@ class RoutingServiceSpec
         </CC015B>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(false)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(false)
 
-        val result = service(fsrc, mc).submitMessage(input, channel, hc)
+          val result = service(fsrc, mc).submitMessage(input, channel, hc)
 
-        result mustBe a[Left[FailureMessage, _]]
+          result mustBe a[Left[FailureMessage, _]]
       }
     }
 
@@ -163,17 +184,18 @@ class RoutingServiceSpec
         </CC015B>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
 
-        service(fsrc, mc).submitMessage(input, channel, hc)
+          service(fsrc, mc).submitMessage(input, channel, hc)
 
-        verify(mc).post(any(), eqTo(Gb), eqTo(hc))
-        verify(mc).postNCTSMonitoring(any(), any(), any(), any())
+          verify(mc).post(any(), eqTo(Gb), eqTo(hc))
+          verify(mc).postNCTSMonitoring(any(), any(), any(), any())
       }
     }
 
@@ -186,22 +208,23 @@ class RoutingServiceSpec
         </CC015B>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(false)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(false)
 
-        val result = service(fsrc, mc).submitMessage(input, channel, hc)
+          val result = service(fsrc, mc).submitMessage(input, channel, hc)
 
-        result mustBe a[Left[FailureMessage, _]]
+          result mustBe a[Left[FailureMessage, _]]
       }
     }
 
     "never posts a movement to NCTS monitoring if message type is not a Departure or Arrival message type" in {
 
-      def nonDepartureXml(messageCode: String): Elem = {
+      def nonDepartureXml(messageCode: String): Elem =
         scala.xml.XML.loadString(s"""
            |<TransitWrapper>
            |   <$messageCode>
@@ -210,18 +233,18 @@ class RoutingServiceSpec
            |      </GUAREF2>
            |   </$messageCode>
            |</TransitWrapper>""".stripMargin)
-      }
 
-      forAll(notNCTSMessageTypeGen, channelGen) { (messageType, channelType) =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(notNCTSMessageTypeGen, channelGen) {
+        (messageType, channelType) =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(any(), any())).thenReturn(true)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(any(), any())).thenReturn(true)
 
-        service(fsrc, mc).submitMessage(nonDepartureXml(messageType.rootNode), channelType, hc)
-        verify(mc).post(any(), any(), any())
-        verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
+          service(fsrc, mc).submitMessage(nonDepartureXml(messageType.rootNode), channelType, hc)
+          verify(mc).post(any(), any(), any())
+          verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
       }
     }
 
@@ -235,27 +258,28 @@ class RoutingServiceSpec
         </CC015B>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
 
-        val mockAppConfig: AppConfig = mock[AppConfig]
+          val mockAppConfig: AppConfig = mock[AppConfig]
 
-        when(mockAppConfig.nctsMonitoringEnabled).thenReturn(false)
+          when(mockAppConfig.nctsMonitoringEnabled).thenReturn(false)
 
-        service(fsrc, mc, mockAppConfig).submitMessage(input, channel, hc)
+          service(fsrc, mc, mockAppConfig).submitMessage(input, channel, hc)
 
-        verify(mc).post(any(), eqTo(Gb), eqTo(hc))
-        verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
+          verify(mc).post(any(), eqTo(Gb), eqTo(hc))
+          verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
       }
     }
 
     "posts arrivals to NCTS monitoring if ncts-monitoring feature is enabled" in {
 
-      def messageXML(rootNode: String): Elem = {
+      def messageXML(rootNode: String): Elem =
         scala.xml.XML.loadString(s"""
              |<TransitWrapper>
              |   <$rootNode>
@@ -264,27 +288,27 @@ class RoutingServiceSpec
              |      </CUSOFFPREOFFRES>
              |   </$rootNode>
              |</TransitWrapper>""".stripMargin)
-      }
 
-      forAll(nctsMessageTypeArrGen, channelGen) { (msgType, channel) =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
-        when(mc.postNCTSMonitoring(any(), any(), any(), any()))
-          .thenReturn(Future.successful(200))
+      forAll(nctsMessageTypeArrGen, channelGen) {
+        (msgType, channel) =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+          when(mc.postNCTSMonitoring(any(), any(), any(), any()))
+            .thenReturn(Future.successful(200))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(any(), any())).thenReturn(true)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(any(), any())).thenReturn(true)
 
-        service(fsrc, mc).submitMessage(messageXML(msgType.rootNode), channel, hc)
+          service(fsrc, mc).submitMessage(messageXML(msgType.rootNode), channel, hc)
 
-        verify(mc).postNCTSMonitoring(any(), any(), any(), any())
-        verify(mc).post(any(), any(), any())
+          verify(mc).postNCTSMonitoring(any(), any(), any(), any())
+          verify(mc).post(any(), any(), any())
       }
     }
 
     "posts departures to NCTS monitoring if ncts-monitoring feature is enabled" in {
 
-      def messageXML(rootNode: String): Elem = {
+      def messageXML(rootNode: String): Elem =
         scala.xml.XML.loadString(s"""
              |<TransitWrapper>
              |   <$rootNode>
@@ -293,21 +317,21 @@ class RoutingServiceSpec
              |      </CUSOFFDEPEPT>
              |   </$rootNode>
              |</TransitWrapper>""".stripMargin)
-      }
 
-      forAll(nctsMessageTypeDepGen, channelGen) { (msgType, channel) =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
-        when(mc.postNCTSMonitoring(any(), any(), any(), any()))
-          .thenReturn(Future.successful(200))
+      forAll(nctsMessageTypeDepGen, channelGen) {
+        (msgType, channel) =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+          when(mc.postNCTSMonitoring(any(), any(), any(), any()))
+            .thenReturn(Future.successful(200))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(any(), any())).thenReturn(true)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(any(), any())).thenReturn(true)
 
-        service(fsrc, mc).submitMessage(messageXML(msgType.rootNode), channel, hc)
+          service(fsrc, mc).submitMessage(messageXML(msgType.rootNode), channel, hc)
 
-        verify(mc).postNCTSMonitoring(any(), any(), any(), any())
-        verify(mc).post(any(), any(), any())
+          verify(mc).postNCTSMonitoring(any(), any(), any(), any())
+          verify(mc).post(any(), any(), any())
       }
     }
 
@@ -320,17 +344,18 @@ class RoutingServiceSpec
         </CC007A>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(true)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(true)
 
-        service(fsrc, mc).submitMessage(input, channel, hc)
+          service(fsrc, mc).submitMessage(input, channel, hc)
 
-        verify(mc).postNCTSMonitoring(any(), any(), any(), any())
-        verify(mc).post(any(), eqTo(Xi), eqTo(hc))
+          verify(mc).postNCTSMonitoring(any(), any(), any(), any())
+          verify(mc).post(any(), eqTo(Xi), eqTo(hc))
       }
     }
 
@@ -343,16 +368,17 @@ class RoutingServiceSpec
         </CC007A>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(false)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(false)
 
-        val result = service(fsrc, mc).submitMessage(input, channel, hc)
+          val result = service(fsrc, mc).submitMessage(input, channel, hc)
 
-        result mustBe a[Left[FailureMessage, _]]
+          result mustBe a[Left[FailureMessage, _]]
       }
     }
 
@@ -365,17 +391,18 @@ class RoutingServiceSpec
         </CC007A>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
 
-        service(fsrc, mc).submitMessage(input, channel, hc)
+          service(fsrc, mc).submitMessage(input, channel, hc)
 
-        verify(mc).postNCTSMonitoring(any(), any(), any(), any())
-        verify(mc).post(any(), eqTo(Gb), eqTo(hc))
+          verify(mc).postNCTSMonitoring(any(), any(), any(), any())
+          verify(mc).post(any(), eqTo(Gb), eqTo(hc))
       }
     }
 
@@ -388,16 +415,17 @@ class RoutingServiceSpec
         </CC007A>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(false)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(false)
 
-        val result = service(fsrc, mc).submitMessage(input, channel, hc)
+          val result = service(fsrc, mc).submitMessage(input, channel, hc)
 
-        result mustBe a[Left[FailureMessage, _]]
+          result mustBe a[Left[FailureMessage, _]]
       }
     }
 
@@ -410,17 +438,18 @@ class RoutingServiceSpec
         </CD034A>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(true)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(true)
 
-        service(fsrc, mc).submitMessage(input, channel, hc)
+          service(fsrc, mc).submitMessage(input, channel, hc)
 
-        verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
-        verify(mc).post(any(), eqTo(Xi), eqTo(hc))
+          verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
+          verify(mc).post(any(), eqTo(Xi), eqTo(hc))
       }
     }
 
@@ -433,16 +462,17 @@ class RoutingServiceSpec
         </CD034A>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(false)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Xi), eqTo(channel))).thenReturn(false)
 
-        val result = service(fsrc, mc).submitMessage(input, channel, hc)
+          val result = service(fsrc, mc).submitMessage(input, channel, hc)
 
-        result mustBe a[Left[FailureMessage, _]]
+          result mustBe a[Left[FailureMessage, _]]
       }
     }
 
@@ -455,17 +485,18 @@ class RoutingServiceSpec
         </CD034A>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(true)
 
-        service(fsrc, mc).submitMessage(input, channel, hc)
+          service(fsrc, mc).submitMessage(input, channel, hc)
 
-        verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
-        verify(mc).post(any(), eqTo(Gb), eqTo(hc))
+          verify(mc, never()).postNCTSMonitoring(any(), any(), any(), any())
+          verify(mc).post(any(), eqTo(Gb), eqTo(hc))
       }
     }
 
@@ -478,16 +509,17 @@ class RoutingServiceSpec
         </CD034A>
       </TransitWrapper>
 
-      forAll(channelGen) { channel =>
-        val mc = mock[MessageConnector]
-        when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
+      forAll(channelGen) {
+        channel =>
+          val mc = mock[MessageConnector]
+          when(mc.post(any(), any(), any())).thenReturn(Future.successful(HttpResponse(200, "")))
 
-        val fsrc = mock[RouteChecker]
-        when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(false)
+          val fsrc = mock[RouteChecker]
+          when(fsrc.canForward(eqTo(Gb), eqTo(channel))).thenReturn(false)
 
-        val result = service(fsrc, mc).submitMessage(input, channel, hc)
+          val result = service(fsrc, mc).submitMessage(input, channel, hc)
 
-        result mustBe a[Left[FailureMessage, _]]
+          result mustBe a[Left[FailureMessage, _]]
       }
     }
   }

@@ -21,11 +21,13 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.stubbing.Scenario
 import config.AppConfig
 import config.RetryConfig
-import models.{Movement, RoutingOption}
+import models.Movement
+import models.RoutingOption
 import models.RoutingOption.Gb
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.scalacheck.Gen
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.must.Matchers
@@ -47,6 +49,8 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads
 import uk.gov.hmrc.http.HttpResponse
+import uk.gov.hmrc.http.client.HttpClientV2
+import uk.gov.hmrc.http.client.RequestBuilder
 
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -63,7 +67,8 @@ class MessageConnectorSpec
     with MockitoSugar
     with IntegrationPatience
     with ScalaCheckPropertyChecks
-    with TableDrivenPropertyChecks {
+    with TableDrivenPropertyChecks
+    with BeforeAndAfterAll {
 
   private object NoRetries extends RetriesService {
 
@@ -94,8 +99,8 @@ class MessageConnectorSpec
 
     "add CustomProcessHost and X-Correlation-Id headers to messages for GB" in forAll(
       appBuilderGen
-    ) { appBuilder =>
-      {
+    ) {
+      appBuilder =>
         server.resetAll()
         val app = appBuilder.build()
 
@@ -142,13 +147,12 @@ class MessageConnectorSpec
 
           result.status mustEqual ACCEPTED
         }
-      }
     }
 
     "add CustomProcessHost and X-Correlation-Id headers to messages for XI" in forAll(
       appBuilderGen
-    ) { appBuilder =>
-      {
+    ) {
+      appBuilder =>
         server.resetAll()
         val app = appBuilder.build()
 
@@ -185,11 +189,10 @@ class MessageConnectorSpec
 
           result.status mustEqual ACCEPTED
         }
-      }
     }
 
-    "return ACCEPTED when post is successful" in forAll(appBuilderGen) { appBuilder =>
-      {
+    "return ACCEPTED when post is successful" in forAll(appBuilderGen) {
+      appBuilder =>
         server.resetAll()
         val app = appBuilder.build()
 
@@ -225,7 +228,6 @@ class MessageConnectorSpec
 
           result.status mustEqual ACCEPTED
         }
-      }
     }
 
     "return ACCEPTED when post is successful on retry if there is an initial failure" in {
@@ -276,73 +278,123 @@ class MessageConnectorSpec
 
     "pass through error status codes" in forAll(errorCodes, appBuilderGen) {
       (statusCode, appBuilder) =>
-        {
-          val app = appBuilder.build()
+        val app = appBuilder.build()
 
-          running(app) {
-            val connector = app.injector.instanceOf[MessageConnector]
+        running(app) {
+          val connector = app.injector.instanceOf[MessageConnector]
 
-            server.stubFor(
-              post(
-                urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
-              ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB"))
-                .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
-                .withHeader(
-                  "X-Correlation-Id",
-                  matching(
-                    "\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"
-                  )
+          server.stubFor(
+            post(
+              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
+            ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB"))
+              .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
+              .withHeader(
+                "X-Correlation-Id",
+                matching(
+                  "\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"
                 )
-                .willReturn(aResponse().withStatus(statusCode))
-            )
+              )
+              .willReturn(aResponse().withStatus(statusCode))
+          )
 
-            val hc = HeaderCarrier()
+          val hc = HeaderCarrier()
 
-            val result = connector.post(<document></document>, Gb, hc).futureValue
+          val result = connector.post(<document></document>, Gb, hc).futureValue
 
-            result.status mustEqual statusCode
-          }
+          result.status mustEqual statusCode
         }
     }
 
     "handle exceptions by returning an HttpResponse with status code 500" in forAll(appBuilderGen) {
       appBuilder =>
-        {
-          val app = appBuilder.build()
+        val app = appBuilder.build()
 
-          running(app) {
-            implicit val materializer = app.injector.instanceOf[Materializer]
-            val appConfig             = app.injector.instanceOf[AppConfig]
-            val config                = app.injector.instanceOf[Configuration]
-            val retriesService        = app.injector.instanceOf[RetriesService]
-            val http                  = mock[HttpClient]
+        running(app) {
+          implicit val materializer = app.injector.instanceOf[Materializer]
+          val appConfig             = app.injector.instanceOf[AppConfig]
+          val config                = app.injector.instanceOf[Configuration]
+          val retriesService        = app.injector.instanceOf[RetriesService]
+          val http                  = mock[HttpClient]
+          val httpv2                = mock[HttpClientV2]
 
-            when(
-              http.POSTString(
-                any(): String,
-                any(): String,
-                any(): Seq[(String, String)]
-              )(
-                any(): HttpReads[HttpResponse],
-                any(): HeaderCarrier,
-                any(): ExecutionContext
-              )
-            ).thenReturn(failed(new RuntimeException("Simulated timeout")))
+          val requestBuilder = mock[RequestBuilder]
 
-            val connector = new MessageConnector(appConfig, config, http, retriesService)
-            val hc        = HeaderCarrier()
-            val result    = connector.post(<document></document>, Gb, hc)
+          when(
+            httpv2.post(any())(any())
+          ).thenReturn(requestBuilder)
 
-            result.futureValue.status mustEqual INTERNAL_SERVER_ERROR
-          }
+          when(requestBuilder.withBody(any())(any(), any(), any())).thenReturn(requestBuilder)
+          when(requestBuilder.transform(any())).thenReturn(requestBuilder)
+          when(requestBuilder.execute(any(), any())).thenReturn(failed(new RuntimeException("Simulated timeout")))
+
+          val connector = new MessageConnector(appConfig, config, http, httpv2, retriesService)
+          val hc        = HeaderCarrier()
+          val result    = connector.post(<document></document>, Gb, hc)
+
+          result.futureValue.status mustEqual INTERNAL_SERVER_ERROR
         }
+    }
+
+    "With message size based timeouts" should {
+      import java.time.{Duration => JavaDuration}
+
+      val fiveSeconds: JavaDuration     = JavaDuration.ofSeconds(5)
+      val tenMilliseconds: JavaDuration = JavaDuration.ofMillis(10)
+
+      "use the small message timeout with small messages" in {
+
+        val app = appWithNoRetries
+          .configure("microservice.services.eis.gb.request-timeout.small-message-size-limit" -> 100)
+          .configure("microservice.services.eis.gb.request-timeout.small-message-timeout" -> fiveSeconds)
+          .configure("microservice.services.eis.gb.request-timeout.large-message-timeout" -> tenMilliseconds)
+          .build()
+
+        running(app) {
+
+          server.stubFor(
+            post(
+              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
+            )
+              .willReturn(aResponse().withStatus(ACCEPTED).withFixedDelay(100))
+          )
+
+          val connector = app.injector.instanceOf[MessageConnector]
+          connector.post("<document></document>", Gb, HeaderCarrier(), 1).futureValue.status mustEqual ACCEPTED
+          connector.post("<document></document>", Gb, HeaderCarrier(), 1000).futureValue.status mustEqual INTERNAL_SERVER_ERROR
+        }
+
+      }
+
+      "use the large message timeout with large messages" in {
+
+        val app = appWithNoRetries
+          .configure("microservice.services.eis.gb.request-timeout.small-message-size-limit" -> 100)
+          .configure("microservice.services.eis.gb.request-timeout.small-message-timeout" -> tenMilliseconds)
+          .configure("microservice.services.eis.gb.request-timeout.large-message-timeout" -> fiveSeconds)
+          .build()
+
+        running(app) {
+
+          server.stubFor(
+            post(
+              urlEqualTo("/transits-movements-trader-at-departure-stub/movements/departures/gb")
+            )
+              .willReturn(aResponse().withStatus(ACCEPTED).withFixedDelay(100))
+          )
+
+          val connector = app.injector.instanceOf[MessageConnector]
+          connector.post("<document></document>", Gb, HeaderCarrier(), 1000).futureValue.status mustEqual ACCEPTED
+          connector.post("<document></document>", Gb, HeaderCarrier(), 1).futureValue.status mustEqual INTERNAL_SERVER_ERROR
+        }
+
+      }
     }
   }
 
   "postNCTSMonitoring" should {
 
-    "return 200 when post is successful" in forAll(appBuilderGen) { appBuilder =>
-      {
+    "return 200 when post is successful" in forAll(appBuilderGen) {
+      appBuilder =>
         val app = appBuilder.build()
 
         running(app) {
@@ -375,7 +427,6 @@ class MessageConnectorSpec
 
           result mustEqual OK
         }
-      }
     }
 
     val errorCodes = Gen.oneOf(
@@ -416,40 +467,39 @@ class MessageConnectorSpec
 
     "handle exceptions by returning an HttpResponse with status code 500" in forAll(appBuilderGen) {
       appBuilder =>
-        {
-          val app = appBuilder.build()
+        val app = appBuilder.build()
 
-          running(app) {
-            implicit val materializer = app.injector.instanceOf[Materializer]
-            val appConfig             = app.injector.instanceOf[AppConfig]
-            val config                = app.injector.instanceOf[Configuration]
-            val retriesService        = app.injector.instanceOf[RetriesService]
-            val http                  = mock[HttpClient]
+        running(app) {
+          implicit val materializer = app.injector.instanceOf[Materializer]
+          val appConfig             = app.injector.instanceOf[AppConfig]
+          val config                = app.injector.instanceOf[Configuration]
+          val retriesService        = app.injector.instanceOf[RetriesService]
+          val http                  = mock[HttpClient]
+          val httpv2                = mock[HttpClientV2]
 
-            when(
-              http.POSTString(
-                any(): String,
-                any(): String,
-                any(): Seq[(String, String)]
-              )(
-                any(): HttpReads[HttpResponse],
-                any(): HeaderCarrier,
-                any(): ExecutionContext
-              )
-            ).thenReturn(failed(new RuntimeException("Simulated timeout")))
+          when(
+            http.POSTString(
+              any(): String,
+              any(): String,
+              any(): Seq[(String, String)]
+            )(
+              any(): HttpReads[HttpResponse],
+              any(): HeaderCarrier,
+              any(): ExecutionContext
+            )
+          ).thenReturn(failed(new RuntimeException("Simulated timeout")))
 
-            val connector = new MessageConnector(appConfig, config, http, retriesService)
-            val result = connector
-              .postNCTSMonitoring(
-                "TEST-ID",
-                LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
-                Gb,
-                HeaderCarrier()
-              )
-              .futureValue
+          val connector = new MessageConnector(appConfig, config, http, httpv2, retriesService)
+          val result = connector
+            .postNCTSMonitoring(
+              "TEST-ID",
+              LocalDateTime.ofEpochSecond(1638349126L, 0, ZoneOffset.UTC),
+              Gb,
+              HeaderCarrier()
+            )
+            .futureValue
 
-            result mustEqual INTERNAL_SERVER_ERROR
-          }
+          result mustEqual INTERNAL_SERVER_ERROR
         }
     }
 

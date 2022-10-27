@@ -14,28 +14,27 @@
  * limitations under the License.
  */
 
-package models
+package config
 
-import models.RoutingOption.Gb
-import models.RoutingOption.Xi
+import org.scalacheck.Gen
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-class OfficeSpec extends AnyFreeSpec with Matchers {
+import scala.concurrent.duration.DurationInt
 
-  "Offices" - {
-    "getRoutingOption" - {
-      "must return Gb when the office starts with GB" in {
-        DepartureOffice("GB123").getRoutingOption mustBe Gb
-      }
+class RequestTimeoutConfigSpec extends AnyFreeSpec with Matchers with ScalaCheckPropertyChecks {
 
-      "must return Xi when the office starts with XI" in {
-        DepartureOffice("XI123").getRoutingOption mustBe Xi
-      }
+  "RequestTimeoutConfig" - {
+    val sut = RequestTimeoutConfig(100, 1.second, 2.seconds)
 
-      "must return Gb when the office starts with anything else" in {
-        DepartureOffice("AB123").getRoutingOption mustBe Gb
-      }
+    "ensure that a small message timeout is selected for a small message" in forAll(Gen.oneOf(Range(1, 101))) {
+      sut.timeout(_) mustBe 1.second
+    }
+
+    "ensure that a large message timeout is selected for a large message" in forAll(Gen.oneOf(Range(101, 1000))) {
+      sut.timeout(_) mustBe 2.seconds
     }
   }
+
 }

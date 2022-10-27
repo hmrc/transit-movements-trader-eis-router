@@ -16,9 +16,7 @@
 
 package models
 
-sealed abstract class MessageType(val code: String, val rootNode: String)
-    extends Product
-    with Serializable
+sealed abstract class MessageType(val code: String, val rootNode: String) extends Product with Serializable
 
 object MessageType {
   case object ArrivalNotification            extends MessageType("IE007", "CC007A")

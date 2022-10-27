@@ -18,9 +18,11 @@ package models
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.JsValue
+import play.api.libs.json.Json
 
-import java.time.{LocalDateTime, ZoneOffset}
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 class MovementSpec extends AnyFreeSpec with Matchers {
 

@@ -39,6 +39,7 @@ import scala.xml.NodeSeq
 class ChannelActionSpec extends AnyFreeSpec with Matchers with ScalaFutures with EitherValues {
 
   private class Harness extends ChannelAction {
+
     def call[A](request: Request[A]): Future[Either[Result, ChannelRequest[A]]] =
       refine(request)
   }
@@ -48,8 +49,9 @@ class ChannelActionSpec extends AnyFreeSpec with Matchers with ScalaFutures with
       val futureResult =
         new Harness().call(FakeRequest("POST", routes.MessagesController.post.url))
 
-      whenReady(futureResult) { result =>
-        status(Future.successful(result.left.get)) mustBe BAD_REQUEST
+      whenReady(futureResult) {
+        result =>
+          status(Future.successful(result.left.get)) mustBe BAD_REQUEST
       }
     }
 
@@ -63,8 +65,9 @@ class ChannelActionSpec extends AnyFreeSpec with Matchers with ScalaFutures with
         )
       )
 
-      whenReady(futureResult) { result =>
-        status(Future.successful(result.left.get)) mustBe BAD_REQUEST
+      whenReady(futureResult) {
+        result =>
+          status(Future.successful(result.left.get)) mustBe BAD_REQUEST
       }
     }
 
@@ -78,8 +81,9 @@ class ChannelActionSpec extends AnyFreeSpec with Matchers with ScalaFutures with
         )
       )
 
-      whenReady(futureResult) { result =>
-        result.right.get.channel mustBe Web
+      whenReady(futureResult) {
+        result =>
+          result.right.get.channel mustBe Web
       }
     }
 
@@ -93,8 +97,9 @@ class ChannelActionSpec extends AnyFreeSpec with Matchers with ScalaFutures with
         )
       )
 
-      whenReady(futureResult) { result =>
-        result.right.get.channel mustBe Api
+      whenReady(futureResult) {
+        result =>
+          result.right.get.channel mustBe Api
       }
     }
   }
