@@ -172,8 +172,9 @@ class MessageConnector @Inject() (
       (t: HttpResponse) => Future.successful(!shouldCauseRetry(t)),
       onFailure(details.routingMessage)
     ) {
+      val correlationId = UUID.randomUUID().toString
       val requestHeaders = hc.headers(OutgoingHeaders.headers) ++ Seq(
-        "X-Correlation-Id"        -> UUID.randomUUID().toString,
+        "X-Correlation-Id"        -> correlationId,
         "CustomProcessHost"       -> "Digital",
         HeaderNames.ACCEPT        -> MimeTypes.XML, // can't use ContentTypes.XML because EIS will not accept "application/xml; charset=utf-8"
         HeaderNames.AUTHORIZATION -> s"Bearer ${details.token}"
@@ -185,7 +186,7 @@ class MessageConnector @Inject() (
 
       val requestId       = getHeader(HMRCHeaderNames.xRequestId, details.url)
       lazy val logMessage = s"""|Posting NCTS message, ${details.routingMessage}
-                                |X-Correlation-Id: ${getHeader("X-Correlation-Id", details.url)}
+                                |X-Correlation-Id: $correlationId
                                 |${HMRCHeaderNames.xRequestId}: $requestId
                                 |X-Message-Type: ${getHeader("X-Message-Type", details.url)}
                                 |X-Message-Sender: ${getHeader("X-Message-Sender", details.url)}
@@ -211,6 +212,27 @@ class MessageConnector @Inject() (
                   logger.warn(logMessageWithStatus)
                 else
                   logger.info(logMessageWithStatus)
+
+                // TODO: TEMPORARY, NEVER TO GO TO PRODUCTION
+                if (result.status >= 500) {
+                  val headerString = result.headers.map {
+                    x =>
+                      if (x._1 == HeaderNames.AUTHORIZATION) (x._1, Seq("REDACTED"))
+                      else x
+                  }.map(x => s"${x._1}: ${x._2.mkString(" | ")}").mkString(System.lineSeparator())
+                  logger.error(
+                    s"""Additional logging information for request ID: $requestId and correlationId $correlationId
+                      |
+                      |Headers:
+                      |$headerString
+                      |
+                      |Status: ${result.status}
+                      |
+                      |Body:
+                      |
+                      |${result.body}
+                      |""".stripMargin)
+                }
 
                 result
             }
